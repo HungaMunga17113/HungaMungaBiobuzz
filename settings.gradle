@@ -1,0 +1,11 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://repo.dairy.foundation/releases' }
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+}
+
+include ':FtcRobotController'
+include ':TeamCode'
