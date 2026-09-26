@@ -12,6 +12,8 @@ public class TeleOpConfig {
     //preset specific
     public static CurveParams CURVE_PARAMS = new CurveParams();
 
+    public static boolean useFieldCentricDrive = true;
+
     public static double kP = 10;
     public static double kI = 0;
     public static double kD = 0;
