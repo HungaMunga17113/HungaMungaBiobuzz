@@ -7,8 +7,8 @@ import org.firstinspires.ftc.teamcode.helpers.CurveParams;
 @Config
 public class TeleOpConfig {
     public static double AIM_TURN_SCALE = 0.2;
-    public static double STICK_DB = 0.05;
-    public static Curve DRIVE_CURVE = Curve.SIGMOID; //linear, cubic_bezier, smoothstep, exponential, quintic, sigmoid (ALL CAPS)
+    public static double STICK_DB = 0.03;
+    public static Curve DRIVE_CURVE = Curve.EXPONENTIAL; //linear, cubic_bezier, smoothstep, exponential, quintic, sigmoid (ALL CAPS)
     //preset specific
     public static CurveParams CURVE_PARAMS = new CurveParams();
 
