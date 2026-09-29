@@ -27,11 +27,11 @@ public class Dt extends OpMode {
             motor.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
             motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         }
-
         leftBack.setDirection(DcMotorEx.Direction.REVERSE);
         leftFront.setDirection(DcMotorEx.Direction.REVERSE);
         rightBack.setDirection(DcMotorEx.Direction.FORWARD);
         rightFront.setDirection(DcMotorEx.Direction.FORWARD);
+        pinpoint.resetPosAndIMU();
         pinpoint.recalibrateIMU();
     }
 
@@ -46,9 +46,9 @@ public class Dt extends OpMode {
         double currHeading = pinpoint.getHeading(AngleUnit.DEGREES);
         telemetry.addData("heading", currHeading);
 
-        double leftX = -deadband(-gamepad1.left_stick_x) * 1.1;
+        double leftX = deadband(gamepad1.left_stick_x);
         double leftY = -deadband(gamepad1.left_stick_y);
-        double rightX = -deadband(-gamepad1.right_stick_x);
+        double rightX = deadband(gamepad1.right_stick_x);
         double rightY = -deadband(-gamepad1.right_stick_y);
 
         boolean aim = gamepad1.left_stick_button;
@@ -59,23 +59,30 @@ public class Dt extends OpMode {
         double yOut;
         double rotOut;
         if (TeleOpConfig.useFieldCentricDrive) {
-            telemetry.addData("right x", rightX);
-            telemetry.addData("right y", rightY);
-            double targetHeading = Math.toDegrees(-Math.atan2(rightY, rightX));
-            telemetry.addData("target heading", targetHeading);
-            double rotDelta = targetHeading - currHeading;
-            telemetry.addData("rot delta", rotDelta);
-            //TODO: add deadband
-            //TODO: cap rotDelta between (-180, 180]
+//            telemetry.addData("right x", rightX);
+//            telemetry.addData("right y", rightY);
+//            double targetHeading = Math.toDegrees(-Math.atan2(rightY, rightX));
+//            telemetry.addData("target heading", targetHeading);
+//            double rotDelta = targetHeading - currHeading;
+//            telemetry.addData("rot delta", rotDelta);
+//            //TODO: add deadband
+//            //TODO: cap rotDelta between (-180, 180]
+//
+//
+//            //TODO: rotate xCurved/yCurved by rotDelta
+//            xOut = 0;
+//            yOut = 0;
+//
+//            //TODO: convert degrees to motor power
+//            // positive rotDelta means turn the robot ccw, negative means turn cw
+//            rotOut = 0;
+            rotOut = gamepad1.right_stick_button
+                    ? TeleOpConfig.AIM_TURN_SCALE * rightX
+                    : curve(rightX);
+            xOut = xCurved * Math.cos(Math.toRadians(currHeading)) + yCurved * Math.sin(Math.toRadians((currHeading)));
+            yOut = yCurved * Math.cos(Math.toRadians(currHeading)) - xCurved * Math.sin(Math.toRadians((currHeading)));
 
 
-            //TODO: rotate xCurved/yCurved by rotDelta
-            xOut = 0;
-            yOut = 0;
-
-            //TODO: convert degrees to motor power
-            // positive rotDelta means turn the robot ccw, negative means turn cw
-            rotOut = 0;
         } else {
             xOut = xCurved;
             yOut = yCurved;
@@ -86,10 +93,11 @@ public class Dt extends OpMode {
 
         // update motors
         double denominator = Math.max(Math.abs(yOut) + Math.abs(xOut) + Math.abs(rotOut), 1.0);
+        //TODO: debloat this code (currently, rotOut controls strafing and xOut controls rotation
         leftFront.setPower((yOut + xOut + rotOut) / denominator);
-        leftBack.setPower((yOut - xOut + rotOut) / denominator);
+        leftBack.setPower((yOut + xOut - rotOut) / denominator);
         rightFront.setPower((yOut - xOut - rotOut) / denominator);
-        rightBack.setPower((yOut + xOut - rotOut) / denominator);
+        rightBack.setPower((yOut - xOut + rotOut) / denominator);
 
         telemetry.update();
     }
