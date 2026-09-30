@@ -1,20 +1,37 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Config.TeleOpConfig;
+import org.firstinspires.ftc.teamcode.helpers.SlewRateLimiter;
+
+import java.util.List;
 
 @TeleOp(name = "drivetrain only", group = "Main")
-public class Dt extends OpMode {
+public class Drivetrain extends OpMode {
     private DcMotorEx leftBack, rightBack, leftFront, rightFront;
     private GoBildaPinpointDriver pinpoint;
+    private List<LynxModule> allHubs;
+
+    private final ElapsedTime loopTimer = new ElapsedTime();
+    private double loopDt;
+    private final SlewRateLimiter yLimiter = new SlewRateLimiter(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
+    private final SlewRateLimiter xLimiter = new SlewRateLimiter(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
+    private final SlewRateLimiter rxLimiter = new SlewRateLimiter(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
 
     @Override
     public void init() {
+        allHubs = hardwareMap.getAll(LynxModule.class);
+        for (LynxModule module : allHubs) {
+            module.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
+        }
+
         leftBack = hardwareMap.get(DcMotorEx.class, "backLeft");
         rightBack = hardwareMap.get(DcMotorEx.class, "backRight");
         leftFront = hardwareMap.get(DcMotorEx.class, "frontLeft");
@@ -33,14 +50,25 @@ public class Dt extends OpMode {
         rightFront.setDirection(DcMotorEx.Direction.FORWARD);
         pinpoint.resetPosAndIMU();
         pinpoint.recalibrateIMU();
+
+        telemetry.addData("status: ", "initialized");
     }
 
     @Override
+    public void start() { loopTimer.reset(); }
+
+    @Override
     public void loop() {
-        drive();
+        for (LynxModule module : allHubs) { module.clearBulkCache(); }
+        double rawDt = loopTimer.seconds();
+        loopTimer.reset();
+        loopDt = Math.min(Math.max(rawDt, 0.0), 0.12);
+
+        drive(loopDt);
+        telemetry.update();
     }
 
-    private void drive() {
+    private void drive(double dt) {
         // get heading
         pinpoint.update();
         double currHeading = pinpoint.getHeading(AngleUnit.DEGREES);
@@ -90,6 +118,13 @@ public class Dt extends OpMode {
                     ? TeleOpConfig.AIM_TURN_SCALE * rightX
                     : curve(rightX);
         }
+
+        //TODO: apply slew rate limiter
+        /*
+        xOut = xLimiter.calculate(xOut, dt);
+        yOut = yLimiter.calculate(yOut, dt);
+        rotOut = rxLimiter.calculate(rotOut, dt);
+        */
 
         // update motors
         double denominator = Math.max(Math.abs(yOut) + Math.abs(xOut) + Math.abs(rotOut), 1.0);
