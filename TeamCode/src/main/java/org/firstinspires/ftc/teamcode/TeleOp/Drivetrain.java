@@ -51,7 +51,7 @@ public class Drivetrain extends OpMode {
         pinpoint.resetPosAndIMU();
         pinpoint.recalibrateIMU();
 
-        telemetry.addData("status: ", "initialized");
+        telemetry.addData("status: ", "initializing");
     }
 
     @Override
