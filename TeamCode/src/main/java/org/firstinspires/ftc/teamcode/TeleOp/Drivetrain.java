@@ -44,9 +44,9 @@ public class Drivetrain extends OpMode {
             motor.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
             motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         }
-        leftBack.setDirection(DcMotorEx.Direction.REVERSE);
+        leftBack.setDirection(DcMotorEx.Direction.FORWARD);
         leftFront.setDirection(DcMotorEx.Direction.REVERSE);
-        rightBack.setDirection(DcMotorEx.Direction.FORWARD);
+        rightBack.setDirection(DcMotorEx.Direction.REVERSE);
         rightFront.setDirection(DcMotorEx.Direction.FORWARD);
         pinpoint.resetPosAndIMU();
         pinpoint.recalibrateIMU();
@@ -87,23 +87,6 @@ public class Drivetrain extends OpMode {
         double yOut;
         double rotOut;
         if (TeleOpConfig.useFieldCentricDrive) {
-//            telemetry.addData("right x", rightX);
-//            telemetry.addData("right y", rightY);
-//            double targetHeading = Math.toDegrees(-Math.atan2(rightY, rightX));
-//            telemetry.addData("target heading", targetHeading);
-//            double rotDelta = targetHeading - currHeading;
-//            telemetry.addData("rot delta", rotDelta);
-//            //TODO: add deadband
-//            //TODO: cap rotDelta between (-180, 180]
-//
-//
-//            //TODO: rotate xCurved/yCurved by rotDelta
-//            xOut = 0;
-//            yOut = 0;
-//
-//            //TODO: convert degrees to motor power
-//            // positive rotDelta means turn the robot ccw, negative means turn cw
-//            rotOut = 0;
             rotOut = gamepad1.right_stick_button
                     ? TeleOpConfig.AIM_TURN_SCALE * rightX
                     : curve(rightX);
@@ -128,12 +111,14 @@ public class Drivetrain extends OpMode {
 
         // update motors
         double denominator = Math.max(Math.abs(yOut) + Math.abs(xOut) + Math.abs(rotOut), 1.0);
-        //TODO: debloat this code (currently, rotOut controls strafing and xOut controls rotation
         leftFront.setPower((yOut + xOut + rotOut) / denominator);
-        leftBack.setPower((yOut + xOut - rotOut) / denominator);
+        leftBack.setPower((yOut - xOut + rotOut) / denominator);
         rightFront.setPower((yOut - xOut - rotOut) / denominator);
-        rightBack.setPower((yOut - xOut + rotOut) / denominator);
-
+        rightBack.setPower((yOut + xOut - rotOut) / denominator);
+        telemetry.addData("FL: ", (yOut + xOut + rotOut) / denominator);
+        telemetry.addData("BL:", (yOut - xOut + rotOut) / denominator);
+        telemetry.addData("FR:", (yOut - xOut - rotOut) / denominator);
+        telemetry.addData("BR:", (yOut + xOut - rotOut) / denominator);
         telemetry.update();
     }
 
