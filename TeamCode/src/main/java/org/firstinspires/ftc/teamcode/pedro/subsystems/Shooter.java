@@ -1,9 +1,9 @@
-package org.firstinspires.ftc.teamcode.subsystems;
+package org.firstinspires.ftc.teamcode.pedro.subsystems;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import org.firstinspires.ftc.teamcode.helpers.Conversions;
+import org.firstinspires.ftc.teamcode.util.Conversions;
 
 /** Shooter wrapper with simple RPM target using built-in velocity control. */
 public class Shooter {

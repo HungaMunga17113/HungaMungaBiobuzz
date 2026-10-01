@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.helpers;
+package org.firstinspires.ftc.teamcode.util;
 
 public class SlewRateLimiter {
     private double velocity = 0.0;

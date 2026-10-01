@@ -1,8 +1,8 @@
-package org.firstinspires.ftc.teamcode.Config;
+package org.firstinspires.ftc.teamcode.TeleOp;
 
 import com.acmerobotics.dashboard.config.Config;
-import org.firstinspires.ftc.teamcode.helpers.Curve;
-import org.firstinspires.ftc.teamcode.helpers.CurveParams;
+import org.firstinspires.ftc.teamcode.util.Curve;
+import org.firstinspires.ftc.teamcode.util.CurveParams;
 
 @Config
 public class TeleOpConfig {
