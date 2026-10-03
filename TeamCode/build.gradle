@@ -1,3 +1,5 @@
+apply plugin: 'com.android.application'
+
 //
 // build.gradle in TeamCode
 //
@@ -8,37 +10,20 @@
 // please think carefully as to whether such customizations are really necessary
 // before doing so.
 
-
 // Custom definitions may go here
 
 // Include common definitions from above.
 apply from: '../build.common.gradle'
 apply from: '../build.dependencies.gradle'
-apply plugin: 'dev.frozenmilk.sinister.sloth.load'
 
 android {
     namespace = 'org.firstinspires.ftc.teamcode'
-    compileSdkVersion 35
 
     packagingOptions {
         jniLibs.useLegacyPackaging true
     }
 }
 
-repositories {
-    maven {
-        url = 'https://repo.dairy.foundation/releases'
-    }
-    maven {
-        url = 'https://mymaven.bylazar.com/releases'
-    }
-}
-
 dependencies {
     implementation project(':FtcRobotController')
-
-    implementation 'dev.frozenmilk.sinister:Sloth:0.3.2'
-    implementation 'com.acmerobotics.slothboard:dashboard:0.3.2+0.6.0'
-    implementation 'com.pedropathing:revhub:3.0.0'
-    implementation 'com.pedropathing:tuning:1.0.0'
 }

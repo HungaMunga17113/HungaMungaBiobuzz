@@ -13,7 +13,7 @@ public class TeleOpConfig {
     public static Curve DRIVE_CURVE = Curve.EXPONENTIAL; // linear, cubic_bezier, smoothstep, exponential, quintic, (ALL CAPS)
     public static CurveParams CURVE_PARAMS = new CurveParams();
 
-    public static boolean useFieldCentricDrive = true;
+    public static boolean useFieldCentricDrive = false;
 
     // slew vals
     public static double ACCEL_UP = 4;
