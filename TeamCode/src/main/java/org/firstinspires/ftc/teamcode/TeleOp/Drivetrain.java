@@ -74,7 +74,7 @@ public class Drivetrain extends OpMode {
         telemetry.addData("heading", currHeading);
 
         double leftX = deadband(gamepad1.left_stick_x);
-        double leftY = deadband(gamepad1.left_stick_y);
+        double leftY = -deadband(gamepad1.left_stick_y);
         double rightX = deadband(gamepad1.right_stick_x);
 
         boolean aim = gamepad1.left_stick_button;
