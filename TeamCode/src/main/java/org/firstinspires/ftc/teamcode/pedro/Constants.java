@@ -11,10 +11,16 @@ import com.pedropathing.revhub.drivetrains.MecanumConfig;
 import com.pedropathing.revhub.localizers.PinpointConfig;
 import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.pedro.mcl.MCL;
+import org.firstinspires.ftc.teamcode.pedro.mcl.MCLLocalizer;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Constants {
 
@@ -64,9 +70,38 @@ public class Constants {
                 c.naturalForwardDeceleration.set(50.31419704866858);
                 c.naturalStrafeDeceleration.set(65.3997286347072);
             });
+
+    // MCL tuning
+    // TODO: real hw names/offsets (in, rad) + field obstacles
+    public static int mclParticles = 200;
+    public static double mclSigma = 1.0;
+    public static double mclMaxReading = 78.75;
+    public static double mclMaxUsableReading = 54;
+    public static double mclMaxRange = 4000; // mm
+    /** field perimeter polyline in pedro coords (0..144 in) */
+    public static double[][] fieldMap = {{0, 0}, {144, 0}, {144, 144}, {0, 144}, {0, 0}};
+
+    public static MCL createMCL(HardwareMap h) {
+        List<MCL.RangeSensor> sensors = new ArrayList<>();
+
+        // addSensor(name, fw offset, lat offset (left +), turn relative to robot heading)
+        addSensor(h, sensors, "distFront", 7, 0, 0);
+        addSensor(h, sensors, "distLeft", 0, 7, Math.PI / 2);
+        addSensor(h, sensors, "distRight", 0, -7, -Math.PI / 2);
+        return new MCL(sensors, fieldMap, mclParticles, mclSigma, mclMaxReading, mclMaxUsableReading);
+    }
+
+    private static void addSensor(HardwareMap h, List<MCL.RangeSensor> sensors, String name,
+                                  double forward, double lateral, double turn) {
+        AnalogInput input = h.tryGet(AnalogInput.class, name);
+        if (input != null) {
+            sensors.add(new MCL.RangeSensor(input, forward, lateral, turn, mclMaxRange));
+        }
+    }
+
     public static Follower create(HardwareMap h) {
         return new Follower(
-                new PinpointLocalizer(h, localizerConfig),
+                new MCLLocalizer(new PinpointLocalizer(h, localizerConfig), createMCL(h)),
                 new Mecanum(h, drivetrainConfig),
                 new Foresight(foresightConfig)
         );
