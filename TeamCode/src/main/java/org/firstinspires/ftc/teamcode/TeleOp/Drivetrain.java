@@ -81,31 +81,26 @@ public class Drivetrain extends OpMode {
         double xCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftX : curve(leftX);
         double yCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftY : curve(leftY);
 
+        xLimiter.setRates(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
+        yLimiter.setRates(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
+        rxLimiter.setRates(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
+
+        double xLim = xLimiter.calculate(xCurved, dt);
+        double yLim = yLimiter.calculate(yCurved, dt);
+        double rotOut = rxLimiter.calculate(gamepad1.right_stick_button
+                ? TeleOpConfig.AIM_TURN_SCALE * rightX
+                : curve(rightX), dt);
+
         double xOut;
         double yOut;
-        double rotOut;
         if (TeleOpConfig.useFieldCentricDrive) {
-            rotOut = gamepad1.right_stick_button
-                    ? TeleOpConfig.AIM_TURN_SCALE * rightX
-                    : curve(rightX);
-            xOut = xCurved * Math.cos(Math.toRadians(currHeading)) + yCurved * Math.sin(Math.toRadians((currHeading)));
-            yOut = yCurved * Math.cos(Math.toRadians(currHeading)) - xCurved * Math.sin(Math.toRadians((currHeading)));
-
-
+            double h = Math.toRadians(currHeading);
+            xOut = xLim * Math.cos(h) + yLim * Math.sin(h);
+            yOut = yLim * Math.cos(h) - xLim * Math.sin(h);
         } else {
-            xOut = xCurved;
-            yOut = yCurved;
-            rotOut = gamepad1.right_stick_button
-                    ? TeleOpConfig.AIM_TURN_SCALE * rightX
-                    : curve(rightX);
+            xOut = xLim;
+            yOut = yLim;
         }
-
-        //TODO: apply slew rate limiter
-        /*
-        xOut = xLimiter.calculate(xOut, dt);
-        yOut = yLimiter.calculate(yOut, dt);
-        rotOut = rxLimiter.calculate(rotOut, dt);
-        */
 
         // update motors
         double denominator = Math.max(Math.abs(yOut) + Math.abs(xOut) + Math.abs(rotOut), 1.0);
@@ -117,7 +112,6 @@ public class Drivetrain extends OpMode {
         telemetry.addData("BL:", (yOut - xOut + rotOut) / denominator);
         telemetry.addData("FR:", (yOut - xOut - rotOut) / denominator);
         telemetry.addData("BR:", (yOut + xOut - rotOut) / denominator);
-        telemetry.update();
     }
 
     private double curve(double input) {

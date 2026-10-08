@@ -17,7 +17,7 @@ public class TeleOpConfig {
 
     // slew vals
     public static double ACCEL_UP = 4;
-    public static double ACCEL_DOWN = 6.5; // 6.5 = slower
+    public static double ACCEL_DOWN = 6.5; // higher = faster stop
     public static double TURN_ACCEL_UP = 6.7;
     public static double TURN_ACCEL_DOWN = 6.7;
 
