@@ -14,6 +14,10 @@ adb connect 192.168.43.1:5555
 
 win
 ```
-set ANDROID_HOME=$HOME/Library/Android/sdk export PATH=$PATH:$ANDROID_HOME/platform-tools
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"; $env:Path += ";$env:ANDROID_HOME\platform-tools"
 adb connect 192.168.43.1:5555
+```
+
+```pwsh
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","User") + ";$env:LOCALAPPDATA\Android\Sdk\platform-tools", "User")
 ```
