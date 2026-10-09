@@ -2,10 +2,15 @@ package org.firstinspires.ftc.teamcode.util;
 
 public class SlewRateLimiter {
     private double velocity = 0.0;
-    private final double maxAccelUp, maxAccelDown;
+    private double maxAccelUp, maxAccelDown;
 
     public SlewRateLimiter(double rateFactor) { this(rateFactor, rateFactor); }
     public SlewRateLimiter(double accelUp, double accelDown) {
+        this.maxAccelUp = accelUp;
+        this.maxAccelDown = accelDown;
+    }
+
+    public void setRates(double accelUp, double accelDown) {
         this.maxAccelUp = accelUp;
         this.maxAccelDown = accelDown;
     }

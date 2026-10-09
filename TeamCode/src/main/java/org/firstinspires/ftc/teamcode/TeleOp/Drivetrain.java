@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.util.SlewRateLimiter;
+import org.firstinspires.ftc.teamcode.util.SlewRateLimiter2D;
 
 import java.util.List;
 
@@ -20,8 +21,7 @@ public class Drivetrain extends OpMode {
 
     private final ElapsedTime loopTimer = new ElapsedTime();
     private double loopDt;
-    private final SlewRateLimiter yLimiter = new SlewRateLimiter(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
-    private final SlewRateLimiter xLimiter = new SlewRateLimiter(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
+    private final SlewRateLimiter2D driveLimiter = new SlewRateLimiter2D(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
     private final SlewRateLimiter rxLimiter = new SlewRateLimiter(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
 
     @Override
@@ -81,31 +81,26 @@ public class Drivetrain extends OpMode {
         double xCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftX : curve(leftX);
         double yCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftY : curve(leftY);
 
+        driveLimiter.setRates(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
+        rxLimiter.setRates(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
+
+        driveLimiter.calculate(xCurved, yCurved, dt);
+        double xLim = driveLimiter.getX();
+        double yLim = driveLimiter.getY();
+        double rotOut = rxLimiter.calculate(gamepad1.right_stick_button
+                ? TeleOpConfig.AIM_TURN_SCALE * rightX
+                : curve(rightX), dt);
+
         double xOut;
         double yOut;
-        double rotOut;
         if (TeleOpConfig.useFieldCentricDrive) {
-            rotOut = gamepad1.right_stick_button
-                    ? TeleOpConfig.AIM_TURN_SCALE * rightX
-                    : curve(rightX);
-            xOut = xCurved * Math.cos(Math.toRadians(currHeading)) + yCurved * Math.sin(Math.toRadians((currHeading)));
-            yOut = yCurved * Math.cos(Math.toRadians(currHeading)) - xCurved * Math.sin(Math.toRadians((currHeading)));
-
-
+            double h = Math.toRadians(currHeading);
+            xOut = xLim * Math.cos(h) + yLim * Math.sin(h);
+            yOut = yLim * Math.cos(h) - xLim * Math.sin(h);
         } else {
-            xOut = xCurved;
-            yOut = yCurved;
-            rotOut = gamepad1.right_stick_button
-                    ? TeleOpConfig.AIM_TURN_SCALE * rightX
-                    : curve(rightX);
+            xOut = xLim;
+            yOut = yLim;
         }
-
-        //TODO: apply slew rate limiter
-        /*
-        xOut = xLimiter.calculate(xOut, dt);
-        yOut = yLimiter.calculate(yOut, dt);
-        rotOut = rxLimiter.calculate(rotOut, dt);
-        */
 
         // update motors
         double denominator = Math.max(Math.abs(yOut) + Math.abs(xOut) + Math.abs(rotOut), 1.0);
@@ -117,7 +112,6 @@ public class Drivetrain extends OpMode {
         telemetry.addData("BL:", (yOut - xOut + rotOut) / denominator);
         telemetry.addData("FR:", (yOut - xOut - rotOut) / denominator);
         telemetry.addData("BR:", (yOut + xOut - rotOut) / denominator);
-        telemetry.update();
     }
 
     private double curve(double input) {
