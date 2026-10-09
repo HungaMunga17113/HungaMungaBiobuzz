@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.util.SlewRateLimiter;
+import org.firstinspires.ftc.teamcode.util.SlewRateLimiter2D;
 
 import java.util.List;
 
@@ -20,8 +21,7 @@ public class Drivetrain extends OpMode {
 
     private final ElapsedTime loopTimer = new ElapsedTime();
     private double loopDt;
-    private final SlewRateLimiter yLimiter = new SlewRateLimiter(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
-    private final SlewRateLimiter xLimiter = new SlewRateLimiter(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
+    private final SlewRateLimiter2D driveLimiter = new SlewRateLimiter2D(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
     private final SlewRateLimiter rxLimiter = new SlewRateLimiter(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
 
     @Override
@@ -81,12 +81,12 @@ public class Drivetrain extends OpMode {
         double xCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftX : curve(leftX);
         double yCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftY : curve(leftY);
 
-        xLimiter.setRates(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
-        yLimiter.setRates(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
+        driveLimiter.setRates(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
         rxLimiter.setRates(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
 
-        double xLim = xLimiter.calculate(xCurved, dt);
-        double yLim = yLimiter.calculate(yCurved, dt);
+        driveLimiter.calculate(xCurved, yCurved, dt);
+        double xLim = driveLimiter.getX();
+        double yLim = driveLimiter.getY();
         double rotOut = rxLimiter.calculate(gamepad1.right_stick_button
                 ? TeleOpConfig.AIM_TURN_SCALE * rightX
                 : curve(rightX), dt);
