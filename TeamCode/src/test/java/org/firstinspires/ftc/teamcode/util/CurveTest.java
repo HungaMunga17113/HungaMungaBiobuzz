@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.firstinspires.ftc.teamcode.util.drivetrain.Curve;
+import org.firstinspires.ftc.teamcode.util.drivetrain.CurveParams;
 import org.junit.Test;
 
 /** shared curve invariants + the branchy ones */

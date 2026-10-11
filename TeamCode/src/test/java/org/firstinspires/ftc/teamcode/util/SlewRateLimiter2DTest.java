@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter2D;
 import org.junit.Test;
 
 public class SlewRateLimiter2DTest {

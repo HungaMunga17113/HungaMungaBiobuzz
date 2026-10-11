@@ -8,8 +8,8 @@ import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.util.SlewRateLimiter;
-import org.firstinspires.ftc.teamcode.util.SlewRateLimiter2D;
+import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter;
+import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter2D;
 
 import java.util.List;
 
