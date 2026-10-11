@@ -15,9 +15,8 @@ public class Shooter {
         shooter = hardwareMap.get(DcMotorEx.class, motorName);
         shooter.setDirection(direction);
         shooter.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-
-        //values before cosmo -- kP:580 kI:8.8 kD:4 kF:47.85
-        shooter.setVelocityPIDFCoefficients(580,0,0,0);
+        // TODO: set to teleopconfig vals
+        shooter.setVelocityPIDFCoefficients(0,0,0,0);
         this.ticksPerRev = ticksPerRev;
     }
 

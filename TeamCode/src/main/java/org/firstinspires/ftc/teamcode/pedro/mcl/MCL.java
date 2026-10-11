@@ -13,7 +13,7 @@ import java.util.Random;
  * only gives x/y estimates
  */
 public class MCL {
-    private static final double MM_PER_INCH = 25.4;
+    public static final double MM_PER_INCH = 25.4;
     public static class RangeSensor {
         final AnalogInput sensor;
         final double forwardOffset;
@@ -29,8 +29,28 @@ public class MCL {
             this.maxRangeMm = maxRangeMm;
         }
 
-        double readInches() {
-            return sensor.getVoltage() / sensor.getMaxVoltage() * maxRangeMm / MM_PER_INCH;
+        public double readRatio() {
+            return sensor.getVoltage() / sensor.getMaxVoltage();
+        }
+
+        public double readInches() {
+            return readRatio() * maxRangeMm / MM_PER_INCH;
+        }
+
+        public double forwardOffset() {
+            return forwardOffset;
+        }
+
+        public double lateralOffset() {
+            return lateralOffset;
+        }
+
+        public double turn() {
+            return turn;
+        }
+
+        public double maxRangeMm() {
+            return maxRangeMm;
         }
     }
 
@@ -81,6 +101,52 @@ public class MCL {
         this.sigma = sigma;
         this.maxReading = maxReading;
         this.maxUsableReading = maxUsableReading;
+    }
+
+    /** (sx, sy) dist to the first fieldMap on rayHeading (maxReading cap) */
+    public static double raycast(double[][] fieldMap, double sx, double sy, double rayHeading, double maxReading) {
+        double minDistance = maxReading;
+        double rx = Math.cos(rayHeading);
+        double ry = Math.sin(rayHeading);
+
+        for (int i = 0; i < fieldMap.length - 1; i++) {
+            double x1 = fieldMap[i][0];
+            double y1 = fieldMap[i][1];
+            double x2 = fieldMap[i + 1][0];
+            double y2 = fieldMap[i + 1][1];
+
+            if (Math.min(x1, x2) > sx + maxReading && rx > 0) {
+                continue;
+            }
+
+            double denom = (x1 - x2) * ry - (y1 - y2) * rx;
+            if (Math.abs(denom) < 1e-6) {
+                continue;
+            }
+            double t = ((x1 - sx) * ry - (y1 - sy) * rx) / denom;
+            double u = ((x1 - x2) * (y1 - sy) - (y1 - y2) * (x1 - sx)) / denom;
+
+            if (0 <= t && t <= 1 && u >= 0) {
+                if (u < minDistance) {
+                    minDistance = u;
+                }
+            }
+        }
+        return minDistance;
+    }
+
+    /** expected reading @ (x, y, theta) sensor loc */
+    public static double expectedReading(RangeSensor sensor, double x, double y, double theta,
+                                         double[][] fieldMap, double maxReading) {
+        double cos = Math.cos(theta);
+        double sin = Math.sin(theta);
+        double sx = x + sensor.forwardOffset * cos - sensor.lateralOffset * sin;
+        double sy = y + sensor.forwardOffset * sin + sensor.lateralOffset * cos;
+        return raycast(fieldMap, sx, sy, theta + sensor.turn, maxReading);
+    }
+
+    public List<RangeSensor> getSensors() {
+        return sensors;
     }
 
     /** reseed particles gaussian around (x, y) */
@@ -135,34 +201,7 @@ public class MCL {
                 double sx = p.x + read.forwardOffset * cos - read.lateralOffset * sin;
                 double sy = p.y + read.forwardOffset * sin + read.lateralOffset * cos;
 
-                double minDistance = maxReading;
-                double localTheta = theta + read.turn;
-                double ry = Math.sin(localTheta);
-                double rx = Math.cos(localTheta);
-
-                for (int i = 0; i < fieldMap.length - 1; i++) {
-                    double x1 = fieldMap[i][0];
-                    double y1 = fieldMap[i][1];
-                    double x2 = fieldMap[i + 1][0];
-                    double y2 = fieldMap[i + 1][1];
-
-                    if (Math.min(x1, x2) > sx + maxReading && rx > 0) {
-                        continue;
-                    }
-
-                    double denom = (x1 - x2) * ry - (y1 - y2) * rx;
-                    if (Math.abs(denom) < 1e-6) {
-                        continue;
-                    }
-                    double t = ((x1 - sx) * ry - (y1 - sy) * rx) / denom;
-                    double u = ((x1 - x2) * (y1 - sy) - (y1 - y2) * (x1 - sx)) / denom;
-
-                    if (0 <= t && t <= 1 && u >= 0) {
-                        if (u < minDistance) {
-                            minDistance = u;
-                        }
-                    }
-                }
+                double minDistance = raycast(fieldMap, sx, sy, theta + read.turn, maxReading);
 
                 if (minDistance > maxUsableReading) {
                     continue;

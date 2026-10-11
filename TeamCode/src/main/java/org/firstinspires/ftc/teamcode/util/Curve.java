@@ -29,17 +29,6 @@ public enum Curve {
             double t = Math.abs(x);
             return Math.signum(x) * (t * t * t * (t * (t * 6 - 15) + 10));
         }
-    },
-    SIGMOID {
-        @Override public double apply(double x, CurveParams p) {
-            double a = p.sharpness;
-            if (a == 0) return x;
-            double t = Math.abs(x);
-            double sig  = 1.0 / (1.0 + Math.exp(-a * t));
-            double sig0 = 0.5;
-            double sig1 = 1.0 / (1.0 + Math.exp(-a));
-            return Math.signum(x) * (sig - sig0) / (sig1 - sig0);
-        }
     };
 
     public abstract double apply(double x, CurveParams p);

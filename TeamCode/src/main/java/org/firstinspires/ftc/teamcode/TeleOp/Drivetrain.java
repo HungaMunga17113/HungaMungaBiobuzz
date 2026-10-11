@@ -26,6 +26,7 @@ public class Drivetrain extends OpMode {
 
     @Override
     public void init() {
+        // lynx bulk caching
         allHubs = hardwareMap.getAll(LynxModule.class);
         for (LynxModule module : allHubs) {
             module.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
@@ -43,6 +44,7 @@ public class Drivetrain extends OpMode {
             motor.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
             motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         }
+
         leftBack.setDirection(DcMotorEx.Direction.FORWARD);
         leftFront.setDirection(DcMotorEx.Direction.REVERSE);
         rightBack.setDirection(DcMotorEx.Direction.REVERSE);
@@ -59,6 +61,8 @@ public class Drivetrain extends OpMode {
     @Override
     public void loop() {
         for (LynxModule module : allHubs) { module.clearBulkCache(); }
+
+        // get loop time for slew rate limiters
         double rawDt = loopTimer.seconds();
         loopTimer.reset();
         loopDt = Math.min(Math.max(rawDt, 0.0), 0.12);
@@ -73,18 +77,20 @@ public class Drivetrain extends OpMode {
         double currHeading = pinpoint.getHeading(AngleUnit.DEGREES);
         telemetry.addData("heading", currHeading);
 
+        // apply deadbands
         double leftX = deadband(gamepad1.left_stick_x);
         double leftY = -deadband(gamepad1.left_stick_y);
         double rightX = deadband(gamepad1.right_stick_x);
 
+        // apply curve <=> !slow mode
         boolean aim = gamepad1.left_stick_button;
         double xCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftX : curve(leftX);
         double yCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftY : curve(leftY);
 
         driveLimiter.setRates(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
         rxLimiter.setRates(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
-
         driveLimiter.calculate(xCurved, yCurved, dt);
+
         double xLim = driveLimiter.getX();
         double yLim = driveLimiter.getY();
         double rotOut = rxLimiter.calculate(gamepad1.right_stick_button
@@ -93,6 +99,8 @@ public class Drivetrain extends OpMode {
 
         double xOut;
         double yOut;
+
+        // fcd calculations
         if (TeleOpConfig.useFieldCentricDrive) {
             double h = Math.toRadians(currHeading);
             xOut = xLim * Math.cos(h) + yLim * Math.sin(h);
@@ -108,6 +116,8 @@ public class Drivetrain extends OpMode {
         leftBack.setPower((yOut - xOut + rotOut) / denominator);
         rightFront.setPower((yOut - xOut - rotOut) / denominator);
         rightBack.setPower((yOut + xOut - rotOut) / denominator);
+
+        // telemetry on rc
         telemetry.addData("FL: ", (yOut + xOut + rotOut) / denominator);
         telemetry.addData("BL:", (yOut - xOut + rotOut) / denominator);
         telemetry.addData("FR:", (yOut - xOut - rotOut) / denominator);
