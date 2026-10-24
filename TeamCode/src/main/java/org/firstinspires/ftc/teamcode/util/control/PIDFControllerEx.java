@@ -107,4 +107,15 @@ public class PIDFControllerEx extends PIDControllerEx {
     }
 
     public double getSetpointAccel() { return setpointAccel; }
+
+    public void updPIDF(double kP, double kI, double kD, double kF) {
+        this.kP = kP;
+        this.kI = kI;
+        this.kD = kD;
+        this.kF = kF;
+    }
+    public void updPIDSVA(double kP, double kI, double kD, double kV, double kA, double kS) {
+        updPIDF(kP, kI, kD, kF);
+        setSVA(kS, kV, kA);
+    }
 }

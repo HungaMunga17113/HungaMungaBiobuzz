@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-@TeleOp(name = "Ball Chase (Toggle Mode)", group = "Hive Vision")
+@TeleOp(name = "Ball Chase (Toggle Mode)", group = "CV")
 public class BallChase extends LinearOpMode {
     private static final String WEBCAM_NAME = "Webcam";
     private static final int CLASS_YELLOW = 0;
