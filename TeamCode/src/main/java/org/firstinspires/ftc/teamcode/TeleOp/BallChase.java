@@ -1,4 +1,3 @@
-
 package org.firstinspires.ftc.teamcode.TeleOp;
 
 import android.util.Size;
@@ -30,9 +29,9 @@ public class BallChase extends LinearOpMode {
 
     public static long LOCK_LOST_MS = 300;
 
-    // If your robot drives backward, change this to a negative value (e.g., -0.40)
-    public static double CHASE_FWD_POWER = 0.40;
-    public static double TURN_KP = 0.025;
+    public static double CHASE_FWD_POWER = 0.40; // negative to reverse
+    public static double TURN_KP = 1.2;
+    public static double TX_DEADBAND = 0.03;
     public static double MIN_TURN = 0.08;
     public static double MAX_TURN = 0.60;
     public static double SEARCH_TURN = 0.30;
@@ -43,6 +42,12 @@ public class BallChase extends LinearOpMode {
     public static long TARGET_LOSS_GRACE_MS = 400; // Prevents flickering when target is lost briefly
     public static long PICKUP_DWELL_MS = 600;
     public static double INTAKE_POWER = 1.0;
+
+    // ball dia (in): pollen = yellow, nectar = red/blue
+    public static double POLLEN_DIA_IN = 2.8;
+    public static double NECTAR_DIA_IN = 3.6;
+    // todo calibrate: FOCAL_PX = pxWidth * knownDistIn / diaIn @ 1280x720
+    public static double FOCAL_PX = 1200.0;
 
     private static final String MOTOR_LF = "frontLeft";
     private static final String MOTOR_RF = "frontRight";
@@ -181,11 +186,15 @@ public class BallChase extends LinearOpMode {
             telemetry.addData("Yellow", "cx=%.2f cy=%.2f", yellow.cxNorm, yellow.cyNorm);
 
             lastSeenTimer.reset();
-            lastSeenDist = ((0.15748*3)/yellow.rect.width);
+            lastSeenDist = (POLLEN_DIA_IN * FOCAL_PX) / yellow.rect.width;
 
-            double turn = Range.clip(yellow.cxNorm * TURN_KP, -MAX_TURN, MAX_TURN);
-            if (Math.abs(turn) < MIN_TURN) {
-                turn = Math.copySign(MIN_TURN, yellow.cxNorm);
+            // cxNorm is 0..1, center it
+            double tx = yellow.cxNorm - 0.5;
+            double turn = Range.clip(tx * TURN_KP, -MAX_TURN, MAX_TURN);
+            if (Math.abs(tx) < TX_DEADBAND) {
+                turn = 0;
+            } else if (Math.abs(turn) < MIN_TURN) {
+                turn = Math.copySign(MIN_TURN, tx);
             }
             double fwd = CHASE_FWD_POWER;
 
@@ -193,7 +202,7 @@ public class BallChase extends LinearOpMode {
             setIntake(INTAKE_POWER);
             drive(fwd, 0, turn);
 
-            telemetry.addData("ball", "tx=%+.1f dist≈%.1f", yellow.cxNorm, lastSeenDist);
+            telemetry.addData("ball", "tx=%+.2f dist≈%.1fin", tx, lastSeenDist);
             return;
         }
 
