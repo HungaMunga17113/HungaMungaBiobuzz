@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.TeleOp;
 
 import com.acmerobotics.dashboard.config.Config;
 
-import org.firstinspires.ftc.teamcode.TeleOp.opModes.ShooterTuningOpMode;
 import org.firstinspires.ftc.teamcode.util.drivetrain.Curve;
 import org.firstinspires.ftc.teamcode.util.drivetrain.CurveParams;
 

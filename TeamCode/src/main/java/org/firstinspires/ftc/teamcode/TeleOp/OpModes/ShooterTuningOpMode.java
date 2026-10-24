@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.TeleOp.opModes;
+package org.firstinspires.ftc.teamcode.TeleOp.OpModes;
 
 import static org.firstinspires.ftc.teamcode.TeleOp.TeleOpConfig.bkD;
 import static org.firstinspires.ftc.teamcode.TeleOp.TeleOpConfig.bkF;
