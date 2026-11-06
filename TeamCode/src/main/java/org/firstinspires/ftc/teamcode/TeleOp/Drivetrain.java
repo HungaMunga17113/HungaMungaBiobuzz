@@ -4,8 +4,8 @@ import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.sun.tools.javac.tree.DCTree;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter;
@@ -16,7 +16,6 @@ import java.util.List;
 @TeleOp(name = "drivetrain only", group = "Main")
 public class Drivetrain extends OpMode {
     private DcMotorEx leftBack, rightBack, leftFront, rightFront;
-    private GoBildaPinpointDriver pinpoint;
     private List<LynxModule> allHubs;
 
     private final ElapsedTime loopTimer = new ElapsedTime();
@@ -36,7 +35,7 @@ public class Drivetrain extends OpMode {
         rightBack = hardwareMap.get(DcMotorEx.class, "backRight");
         leftFront = hardwareMap.get(DcMotorEx.class, "frontLeft");
         rightFront = hardwareMap.get(DcMotorEx.class, "frontRight");
-        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+
 
         DcMotorEx[] motors = {leftBack, rightBack, leftFront, rightFront};
 
@@ -46,11 +45,9 @@ public class Drivetrain extends OpMode {
         }
 
         leftBack.setDirection(DcMotorEx.Direction.FORWARD);
-        leftFront.setDirection(DcMotorEx.Direction.REVERSE);
+        leftFront.setDirection(DcMotorEx.Direction.FORWARD);
         rightBack.setDirection(DcMotorEx.Direction.REVERSE);
         rightFront.setDirection(DcMotorEx.Direction.FORWARD);
-        pinpoint.resetPosAndIMU();
-        pinpoint.recalibrateIMU();
 
         telemetry.addData("status: ", "initializing");
     }
@@ -68,14 +65,11 @@ public class Drivetrain extends OpMode {
         loopDt = Math.min(Math.max(rawDt, 0.0), 0.12);
 
         drive(loopDt);
+
         telemetry.update();
     }
 
     private void drive(double dt) {
-        // get heading
-        pinpoint.update();
-        double currHeading = pinpoint.getHeading(AngleUnit.DEGREES);
-        telemetry.addData("heading", currHeading);
 
         // apply deadbands
         double leftX = deadband(gamepad1.left_stick_x);
@@ -100,15 +94,8 @@ public class Drivetrain extends OpMode {
         double xOut;
         double yOut;
 
-        // fcd calculations
-        if (TeleOpConfig.useFieldCentricDrive) {
-            double h = Math.toRadians(currHeading);
-            xOut = xLim * Math.cos(h) + yLim * Math.sin(h);
-            yOut = yLim * Math.cos(h) - xLim * Math.sin(h);
-        } else {
             xOut = xLim;
             yOut = yLim;
-        }
 
         // update motors
         double denominator = Math.max(Math.abs(yOut) + Math.abs(xOut) + Math.abs(rotOut), 1.0);
