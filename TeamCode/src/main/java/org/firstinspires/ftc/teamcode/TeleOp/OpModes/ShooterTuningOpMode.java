@@ -36,7 +36,7 @@ public class ShooterTuningOpMode extends OpMode {
     private DcMotorEx shooter;
     private final double tpr = Conversions.TPR_6000_RPM;
 
-    private double targetVel = 0;
+    private static double targetVel = 0;
     private double currentVel = 0;
     private double currentRPM = 0;
     private double error = 0;

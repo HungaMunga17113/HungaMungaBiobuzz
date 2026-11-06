@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
+import org.firstinspires.ftc.teamcode.util.Conversions;
+
 import com.acmerobotics.dashboard.config.Config;
 
 import org.firstinspires.ftc.teamcode.util.drivetrain.Curve;
@@ -21,18 +23,25 @@ public class TeleOpConfig {
     public static double TURN_ACCEL_DOWN = 6.7;
 
     /// shooter stuff
+
+    public static int rpm_1 = 1300;
+    public static int rpm_2 = 2500;
     public static enum TuningModes { BUILT_IN, CUSTOM, SVA};
     public static TuningModes TuningMode = TuningModes.BUILT_IN;
 
+    // builtin pid+f
     public static double bkP = 0;
     public static double bkI = 0;
     public static double bkD = 0;
     public static double bkF = 0;
 
+    // custom pid+f
     public static double ckP = 0;
     public static double ckI = 0;
     public static double ckD = 0;
     public static double ckF = 0;
+
+    // custom pid+sva
     public static double vkP = 0;
     public static double vkI = 0;
     public static double vkD = 0;

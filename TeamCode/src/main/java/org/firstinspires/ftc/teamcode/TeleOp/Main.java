@@ -3,11 +3,13 @@ package org.firstinspires.ftc.teamcode.TeleOp;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.sun.tools.javac.tree.DCTree;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.util.Conversions;
 import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter;
 import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter2D;
 
@@ -24,6 +26,8 @@ public class Main extends OpMode {
     private double loopDt;
     private final SlewRateLimiter2D driveLimiter = new SlewRateLimiter2D(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
     private final SlewRateLimiter rxLimiter = new SlewRateLimiter(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
+
+    private int tVel;
 
     @Override
     public void init() {
@@ -45,12 +49,15 @@ public class Main extends OpMode {
                 "flywheel");
 
 
-        DcMotorEx[] motors = {leftBack, rightBack, leftFront, rightFront, intake, shooter};
+        DcMotorEx[] motors = {leftBack, rightBack, leftFront, rightFront, intake};
 
         for (DcMotorEx motor : motors) {
             motor.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
             motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         }
+
+        shooter.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
+        shooter.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
 
         leftBack.setDirection(DcMotorEx.Direction.FORWARD);
         leftFront.setDirection(DcMotorEx.Direction.FORWARD);
@@ -132,5 +139,12 @@ public class Main extends OpMode {
     }
 
     private void intake() { intake.setPower( (gamepad1.left_trigger>0.2) ? 1 :  (gamepad1.dpad_down) ? -1 : 0); }
-    private void shooter() { shooter.setPower( (gamepad1.right_trigger>0.2) ? -1 :  0); }
+    private void shooter() {
+        shooter.setVelocityPIDFCoefficients(TeleOpConfig.ckP, TeleOpConfig.ckI, TeleOpConfig.ckD, TeleOpConfig.ckF);
+        if (gamepad1.right_trigger > 0.15) { tVel = (int) Conversions.rpmToTps(TeleOpConfig.rpm_1, Conversions.TPR_6000_RPM); }
+        else if (gamepad1.right_bumper) { tVel = (int) Conversions.rpmToTps(TeleOpConfig.rpm_2, Conversions.TPR_6000_RPM); }
+        shooter.setVelocity(tVel);
+
+        //shooter.setPower( (gamepad1.right_trigger>0.2) ? -1 :  0);
+    }
 }
