@@ -1,8 +1,11 @@
 package org.firstinspires.ftc.teamcode.pedro.subsystems;
 
+import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+
+import org.firstinspires.ftc.teamcode.TeleOp.TeleOpConfig;
 import org.firstinspires.ftc.teamcode.util.Conversions;
 
 /** Shooter wrapper with simple RPM target using built-in velocity control. */
@@ -16,7 +19,7 @@ public class Shooter {
         shooter.setDirection(direction);
         shooter.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         // TODO: set to teleopconfig vals
-        shooter.setVelocityPIDFCoefficients(0,0,0,0);
+        shooter.setVelocityPIDFCoefficients(TeleOpConfig.bkP, TeleOpConfig.bkI, TeleOpConfig.bkD, TeleOpConfig.bkF);
         this.ticksPerRev = ticksPerRev;
     }
 

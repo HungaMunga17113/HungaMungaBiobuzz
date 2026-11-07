@@ -15,7 +15,7 @@ public class Intake {
     public void setPower(double power) {
         intake.setPower(power);
     }
-    public void stop() {
-        setPower(0.0);
-    }
+    public void in() { intake.setPower(1); }
+    public void out() { intake.setPower(-1); }
+    public void stop() {setPower(0.0);}
 }

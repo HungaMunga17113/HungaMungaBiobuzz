@@ -18,22 +18,22 @@ public class TeleOpConfig {
 
     /// slew vals
     public static double ACCEL_UP = 4;
-    public static double ACCEL_DOWN = 6.5; // higher = faster stop
-    public static double TURN_ACCEL_UP = 6.7;
-    public static double TURN_ACCEL_DOWN = 6.7;
+    public static double ACCEL_DOWN = 11; // higher = faster stop
+    public static double TURN_ACCEL_UP = 9.5;
+    public static double TURN_ACCEL_DOWN = 12;
 
     /// shooter stuff
 
-    public static int rpm_1 = -6000;
+    public static int rpm_1 = -5200;
     public static int rpm_2 = 0;
     public static enum TuningModes { BUILT_IN, CUSTOM, SVA};
     public static TuningModes TuningMode = TuningModes.BUILT_IN;
 
     // builtin pid+f
-    public static double bkP = 0;
-    public static double bkI = 0;
-    public static double bkD = 0;
-    public static double bkF = 0;
+    public static double bkP = 7.3;
+    public static double bkI = 4;
+    public static double bkD = 20;
+    public static double bkF = 10.2;
 
     // custom pid+f
     public static double ckP = 60;
