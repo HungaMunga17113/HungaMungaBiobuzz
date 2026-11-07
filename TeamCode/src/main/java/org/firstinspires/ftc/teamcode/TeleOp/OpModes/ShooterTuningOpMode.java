@@ -54,7 +54,7 @@ public class ShooterTuningOpMode extends OpMode {
 
         mode = TeleOpConfig.TuningMode;
 
-        shooter = hardwareMap.get(DcMotorEx.class, "shooter");
+        shooter = hardwareMap.get(DcMotorEx.class, "flywheel");
         shooter.setDirection(DcMotorSimple.Direction.FORWARD);
         shooter.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
 

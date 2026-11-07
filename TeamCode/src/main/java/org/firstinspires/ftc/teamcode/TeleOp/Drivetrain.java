@@ -1,9 +1,11 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.sun.tools.javac.tree.DCTree;
 
@@ -17,6 +19,7 @@ import java.util.List;
 public class Drivetrain extends OpMode {
     private DcMotorEx leftBack, rightBack, leftFront, rightFront;
     private List<LynxModule> allHubs;
+    private GoBildaPinpointDriver pinpoint;
 
     private final ElapsedTime loopTimer = new ElapsedTime();
     private double loopDt;
@@ -35,7 +38,9 @@ public class Drivetrain extends OpMode {
         rightBack = hardwareMap.get(DcMotorEx.class, "backRight");
         leftFront = hardwareMap.get(DcMotorEx.class, "frontLeft");
         rightFront = hardwareMap.get(DcMotorEx.class, "frontRight");
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
 
+        pinpoint.resetPosAndIMU();
 
         DcMotorEx[] motors = {leftBack, rightBack, leftFront, rightFront};
 
@@ -45,9 +50,9 @@ public class Drivetrain extends OpMode {
         }
 
         leftBack.setDirection(DcMotorEx.Direction.FORWARD);
-        leftFront.setDirection(DcMotorEx.Direction.FORWARD);
+        leftFront.setDirection(DcMotorEx.Direction.REVERSE);
         rightBack.setDirection(DcMotorEx.Direction.REVERSE);
-        rightFront.setDirection(DcMotorEx.Direction.FORWARD);
+        rightFront.setDirection(DcMotorEx.Direction.REVERSE);
 
         telemetry.addData("status: ", "initializing");
     }
@@ -80,29 +85,42 @@ public class Drivetrain extends OpMode {
         boolean aim = gamepad1.left_stick_button;
         double xCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftX : curve(leftX);
         double yCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftY : curve(leftY);
+        pinpoint.update();
+        double currHeading = pinpoint.getHeading(AngleUnit.DEGREES);
+        telemetry.addData("heading", currHeading);
 
         driveLimiter.setRates(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
         rxLimiter.setRates(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
         driveLimiter.calculate(xCurved, yCurved, dt);
 
-        double xLim = driveLimiter.getX();
-        double yLim = driveLimiter.getY();
+        xCurved = driveLimiter.getX();
+        yCurved = driveLimiter.getY();
         double rotOut = rxLimiter.calculate(gamepad1.right_stick_button
                 ? TeleOpConfig.AIM_TURN_SCALE * rightX
                 : curve(rightX), dt);
 
         double xOut;
         double yOut;
-
-            xOut = xLim;
-            yOut = yLim;
+        if (TeleOpConfig.useFieldCentricDrive) {
+            rotOut = gamepad1.right_stick_button
+                    ? TeleOpConfig.AIM_TURN_SCALE * rightX
+                    : curve(rightX);
+            xOut = xCurved * Math.cos(Math.toRadians(currHeading)) + yCurved * Math.sin(Math.toRadians((currHeading)));
+            yOut = yCurved * Math.cos(Math.toRadians(currHeading)) - xCurved * Math.sin(Math.toRadians((currHeading)));
+        } else {
+            xOut = xCurved;
+            yOut = yCurved;
+            rotOut = gamepad1.right_stick_button
+                    ? TeleOpConfig.AIM_TURN_SCALE * rightX
+                    : curve(rightX);
+        }
 
         // update motors
         double denominator = Math.max(Math.abs(yOut) + Math.abs(xOut) + Math.abs(rotOut), 1.0);
-        leftFront.setPower((yOut + xOut + rotOut) / denominator);
-        leftBack.setPower((yOut - xOut + rotOut) / denominator);
-        rightFront.setPower((yOut - xOut - rotOut) / denominator);
-        rightBack.setPower((yOut + xOut - rotOut) / denominator);
+        leftFront.setPower((yOut - xOut + rotOut) / denominator);
+        leftBack.setPower((yOut + xOut + rotOut) / denominator);
+        rightFront.setPower((yOut + xOut - rotOut) / denominator);
+        rightBack.setPower((yOut - xOut - rotOut) / denominator);
 
         // telemetry on rc
         telemetry.addData("FL: ", (yOut + xOut + rotOut) / denominator);

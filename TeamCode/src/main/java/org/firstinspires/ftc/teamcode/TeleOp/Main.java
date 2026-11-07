@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.sun.tools.javac.tree.DCTree;
 
@@ -18,6 +19,7 @@ import java.util.List;
 @TeleOp(name = "MAIN TELE (LM1)", group = "Main")
 public class Main extends OpMode {
     private DcMotorEx leftBack, rightBack, leftFront, rightFront, intake, shooter;
+    private Servo transfer;
 
     ///TODO: SERVO STUFF
     private List<LynxModule> allHubs;
@@ -42,6 +44,8 @@ public class Main extends OpMode {
         leftFront = hardwareMap.get(DcMotorEx.class, "frontLeft");
         rightFront = hardwareMap.get(DcMotorEx.class, "frontRight");
 
+        transfer = hardwareMap.get(Servo.class, "transfer");
+
         intake = hardwareMap.get(DcMotorEx.class,
                 "intake");
 
@@ -58,6 +62,8 @@ public class Main extends OpMode {
 
         shooter.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
         shooter.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+
+        transfer.setDirection(Servo.Direction.FORWARD);
 
         leftBack.setDirection(DcMotorEx.Direction.FORWARD);
         leftFront.setDirection(DcMotorEx.Direction.FORWARD);
@@ -82,6 +88,7 @@ public class Main extends OpMode {
         drive(loopDt);
         intake();
         shooter();
+        transfer();
 
 
         telemetry.update();
@@ -145,6 +152,21 @@ public class Main extends OpMode {
         else if (gamepad1.right_bumper) { tVel = (int) Conversions.rpmToTps(TeleOpConfig.rpm_2, Conversions.TPR_6000_RPM); }
         shooter.setVelocity(tVel);
 
+        telemetry.addData("speed", Conversions.tpsToRpm(shooter.getVelocity(), Conversions.TPR_6000_RPM));
+        telemetry.addData("target speed", TeleOpConfig.rpm_1);
+        telemetry.update();
         //shooter.setPower( (gamepad1.right_trigger>0.2) ? -1 :  0);
+
+    }
+    private void transfer() {
+//        if (gamepad1.a) {
+//            transfer.setPosition(0.65);
+//        }
+//        else if (gamepad1.b) { transfer.setPosition(1.0); }
+        if(gamepad1.right_trigger > 0.15){
+            transfer.setPosition(0.65);
+        }else{
+            transfer.setPosition(1.0);
+        }
     }
 }

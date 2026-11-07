@@ -14,7 +14,7 @@ public class TeleOpConfig {
     public static double STICK_DB = 0.03;
     public static Curve DRIVE_CURVE = Curve.EXPONENTIAL; // linear, cubic_bezier, smoothstep, exponential, quintic, (ALL CAPS)
     public static CurveParams CURVE_PARAMS = new CurveParams();
-    public static boolean useFieldCentricDrive = false;
+    public static boolean useFieldCentricDrive = true;
 
     /// slew vals
     public static double ACCEL_UP = 4;
@@ -24,8 +24,8 @@ public class TeleOpConfig {
 
     /// shooter stuff
 
-    public static int rpm_1 = 1300;
-    public static int rpm_2 = 2500;
+    public static int rpm_1 = -6000;
+    public static int rpm_2 = 0;
     public static enum TuningModes { BUILT_IN, CUSTOM, SVA};
     public static TuningModes TuningMode = TuningModes.BUILT_IN;
 
@@ -36,9 +36,9 @@ public class TeleOpConfig {
     public static double bkF = 0;
 
     // custom pid+f
-    public static double ckP = 0;
+    public static double ckP = 60;
     public static double ckI = 0;
-    public static double ckD = 0;
+    public static double ckD = 10;
     public static double ckF = 0;
 
     // custom pid+sva
