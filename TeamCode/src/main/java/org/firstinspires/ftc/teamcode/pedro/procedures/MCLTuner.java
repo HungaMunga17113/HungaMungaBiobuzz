@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedro.procedures;
 
+import static org.firstinspires.ftc.teamcode.util.Panels.panels;
+
 import com.pedropathing.localization.Localizer;
 import com.pedropathing.math.Pose;
 import com.pedropathing.tuning.autotune.Inputs;
@@ -198,10 +200,10 @@ class MCLSensorCheck extends TuningOpMode<Boolean> {
         waitForStart();
         while (!isStopRequested()) {
             for (int i = 0; i < sensors.size(); i++) {
-                telemetry.addData(specs.get(i).name, "%.2f in (%.3f full scale)",
-                        sensors.get(i).readInches(), sensors.get(i).readRatio());
+                panels.addData(specs.get(i).name, String.format("%.2f in (%.3f full scale)",
+                        sensors.get(i).readInches(), sensors.get(i).readRatio()));
             }
-            telemetry.update();
+            panels.update(telemetry);
         }
         return true;
     }
@@ -231,9 +233,9 @@ class MCLRangeScalar extends TuningOpMode<Double> {
         while (!isStopRequested()) {
             sum += sensor.readRatio();
             samples++;
-            telemetry.addData("samples", samples);
-            telemetry.addData("mean full scale", samples == 0 ? 0 : sum / samples);
-            telemetry.update();
+            panels.addData("samples", samples);
+            panels.addData("mean full scale", samples == 0 ? 0 : sum / samples);
+            panels.update(telemetry);
         }
 
         if (samples == 0) {
@@ -285,8 +287,8 @@ class MCLNoise extends TuningOpMode<List<Double>> {
                 sumSq[i] += reading * reading;
             }
             samples++;
-            telemetry.addData("samples", samples);
-            telemetry.update();
+            panels.addData("samples", samples);
+            panels.update(telemetry);
         }
 
         List<Double> stdDevs = new ArrayList<>();
@@ -378,8 +380,8 @@ class MCLMaxUsable extends TuningOpMode<Double> {
                 errorCount[bucket]++;
             }
 
-            telemetry.addData("pose", pose);
-            telemetry.update();
+            panels.addData("pose", pose);
+            panels.update(telemetry);
         }
 
         double tolerance = Math.max(3 * sigma, 1.0);
@@ -440,10 +442,10 @@ class MCLParticleBenchmark extends TuningOpMode<Integer> {
             }
             double msPerStep = timer.milliseconds() / STEPS_PER_TRIAL;
 
-            telemetry.addData("particles", count);
-            telemetry.addData("ms/step", "%.2f (budget %.2f)", msPerStep, budgetMs);
-            telemetry.addData("best so far", best);
-            telemetry.update();
+            panels.addData("particles", count);
+            panels.addData("ms/step", String.format("%.2f (budget %.2f)", msPerStep, budgetMs));
+            panels.addData("best so far", best);
+            panels.update(telemetry);
 
             if (msPerStep > budgetMs) {
                 break;
@@ -489,8 +491,8 @@ class MCLConvergence extends TuningOpMode<Double> {
 
         for (int i = 0; i < SETTLE_STEPS && !isStopRequested(); i++) {
             mcl.mclStep(0, 0, known.heading());
-            telemetry.addData("settling", "%d / %d", i + 1, SETTLE_STEPS);
-            telemetry.update();
+            panels.addData("settling", String.format("%d / %d", i + 1, SETTLE_STEPS));
+            panels.update(telemetry);
         }
 
         double sum = 0;
@@ -499,9 +501,9 @@ class MCLConvergence extends TuningOpMode<Double> {
             mcl.mclStep(0, 0, known.heading());
             sum += Math.hypot(mcl.getEstimateX() - known.x(), mcl.getEstimateY() - known.y());
             samples++;
-            telemetry.addData("mean error (in)", "%.2f", sum / samples);
-            telemetry.addData("estimate", "%.2f, %.2f", mcl.getEstimateX(), mcl.getEstimateY());
-            telemetry.update();
+            panels.addData("mean error (in)", String.format("%.2f", sum / samples));
+            panels.addData("estimate", String.format("%.2f, %.2f", mcl.getEstimateX(), mcl.getEstimateY()));
+            panels.update(telemetry);
         }
 
         return samples == 0 ? Double.NaN : sum / samples;

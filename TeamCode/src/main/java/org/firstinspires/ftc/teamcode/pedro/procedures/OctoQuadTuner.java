@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedro.procedures;
 
+import static org.firstinspires.ftc.teamcode.util.Panels.panels;
+
 import com.pedropathing.math.Pose;
 import com.pedropathing.revhub.localizers.OctoQuadConfig;
 import com.pedropathing.revhub.localizers.OctoQuadLocalizer;
@@ -337,8 +339,8 @@ class OctoQuadOffsets extends TuningOpMode<List<Double>> {
         while (!isStopRequested()) {
             previous = localizer.pose();
             localizer.update();
-            telemetry.addData("heading", localizer.pose().heading());
-            telemetry.update();
+            panels.addData("heading", localizer.pose().heading());
+            panels.update(telemetry);
         }
 
         if (localizer.pose().x() != Pose.zero().x() || localizer.pose().y() != Pose.zero().y()) {

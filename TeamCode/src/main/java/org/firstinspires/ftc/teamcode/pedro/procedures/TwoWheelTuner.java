@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedro.procedures;
 
+import static org.firstinspires.ftc.teamcode.util.Panels.panels;
+
 import com.pedropathing.math.Pose;
 import com.pedropathing.revhub.localizers.Encoder;
 import com.pedropathing.revhub.localizers.RevHubIMU;
@@ -196,9 +198,9 @@ class TwoWheelForwardResolution extends TuningOpMode<Double> {
         while (!isStopRequested()) {
             localizer.update();
             position = localizer.pose();
-            telemetry.addData("heading", localizer.pose().heading());
-            telemetry.addData("pose", localizer.pose());
-            telemetry.update();
+            panels.addData("heading", localizer.pose().heading());
+            panels.addData("pose", localizer.pose());
+            panels.update(telemetry);
         }
 
         if (position == null || position.x() == 0.0) {
@@ -389,10 +391,10 @@ class TwoWheelOffsets extends TuningOpMode<List<Double>> {
             previous = localizer.pose();
             localizer.update();
 
-            telemetry.addData("heading", localizer.pose().heading());
-            telemetry.addData("pose", localizer.pose());
-            telemetry.addData("previous", previous);
-            telemetry.update();
+            panels.addData("heading", localizer.pose().heading());
+            panels.addData("pose", localizer.pose());
+            panels.addData("previous", previous);
+            panels.update(telemetry);
         }
 
         if (localizer.pose().x() != Pose.zero().x() || localizer.pose().y() != Pose.zero().y()) {

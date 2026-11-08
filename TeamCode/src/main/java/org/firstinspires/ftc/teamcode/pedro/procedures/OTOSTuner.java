@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedro.procedures;
 
+import static org.firstinspires.ftc.teamcode.util.Panels.panels;
+
 import com.pedropathing.math.Pose;
 import com.pedropathing.revhub.localizers.OTOSConfig;
 import com.pedropathing.revhub.localizers.OTOSLocalizer;
@@ -197,8 +199,8 @@ class OTOSOffsets extends TuningOpMode<List<Double>> {
         while (!isStopRequested()) {
             localizer.update();
             position = localizer.pose();
-            telemetry.addData("heading", localizer.pose().heading());
-            telemetry.update();
+            panels.addData("heading", localizer.pose().heading());
+            panels.update(telemetry);
         }
 
         if (position == null) {

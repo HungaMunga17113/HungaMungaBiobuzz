@@ -15,9 +15,9 @@ import static org.firstinspires.ftc.teamcode.TeleOp.TeleOpConfig.vkP;
 import static org.firstinspires.ftc.teamcode.TeleOp.TeleOpConfig.vkS;
 import static org.firstinspires.ftc.teamcode.TeleOp.TeleOpConfig.vkV;
 
-import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.bylazar.configurables.annotations.Configurable;
+import com.bylazar.telemetry.PanelsTelemetry;
+import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -28,7 +28,7 @@ import org.firstinspires.ftc.teamcode.util.Conversions;
 import org.firstinspires.ftc.teamcode.util.control.PIDFControllerEx;
 
 
-@Config
+@Configurable
 @TeleOp(name="shooter TUNER", group="misc")
 public class ShooterTuningOpMode extends OpMode {
     public static int targetRPM = 0; // max k
@@ -45,12 +45,13 @@ public class ShooterTuningOpMode extends OpMode {
     private double p,i,d,f;
     private double s,v,a;
     private final PIDFControllerEx pidf = new PIDFControllerEx(0,0,0,0);
+    private TelemetryManager panels;
     private TeleOpConfig.TuningModes mode = TeleOpConfig.TuningModes.BUILT_IN;
 
 
     @Override
     public void init() {
-        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        panels = PanelsTelemetry.INSTANCE.getTelemetry();
 
         mode = TeleOpConfig.TuningMode;
 
@@ -59,23 +60,13 @@ public class ShooterTuningOpMode extends OpMode {
         shooter.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
 
         shooter.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        update_vals();
-
-        if (mode == TeleOpConfig.TuningModes.BUILT_IN) {
-            shooter.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-            shooter.setVelocityPIDFCoefficients(p, i, d, f);
-        } else {
-            shooter.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-            push_custom_gains();
-            pidf.setDerivativeFilter(0.2);
-            pidf.setOutputRange(0, 1);
-        }
+        apply_mode();
 
         targetVel = Conversions.rpmToTps(targetRPM, tpr);
 
-        telemetry.addData("status: ", "initialized");
-        telemetry.addData("mode: ", mode);
-        telemetry.update();
+        panels.addData("status: ", "initialized");
+        panels.addData("mode: ", mode);
+        panels.update(telemetry);
     }
 
     @Override
@@ -86,6 +77,10 @@ public class ShooterTuningOpMode extends OpMode {
 
     @Override
     public void loop() {
+        if (TeleOpConfig.TuningMode != mode) {
+            mode = TeleOpConfig.TuningMode;
+            apply_mode();
+        }
         update_vals();
         targetVel = Conversions.rpmToTps(targetRPM, tpr);
         currentVel = Math.abs(shooter.getVelocity());
@@ -98,14 +93,14 @@ public class ShooterTuningOpMode extends OpMode {
             shooter_custom();
         }
 
-        telemetry.addData("mode", mode);
-        telemetry.addData("targetVel ticks", targetVel);
-        telemetry.addData("currentVel ticks", currentVel);
-        telemetry.addData("targetRPM", targetRPM);
-        telemetry.addData("currentRPM", currentRPM);
-        telemetry.addData("error", error);
-        telemetry.addData("output", output);
-        telemetry.update();
+        panels.addData("mode", mode);
+        panels.addData("targetVel ticks", targetVel);
+        panels.addData("currentVel ticks", currentVel);
+        panels.addData("targetRPM", targetRPM);
+        panels.addData("currentRPM", currentRPM);
+        panels.addData("error", error);
+        panels.addData("output", output);
+        panels.update(telemetry);
     }
 
     @Override
@@ -124,6 +119,21 @@ public class ShooterTuningOpMode extends OpMode {
         output = targetRPM == 0 ? 0 : pidf.calculate(currentRPM, targetRPM);
         if (targetRPM == 0) pidf.reset();
         shooter.setPower(output);
+    }
+
+    private void apply_mode() {
+        update_vals();
+        pidf.reset();
+        if (mode == TeleOpConfig.TuningModes.BUILT_IN) {
+            shooter.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+            shooter.setVelocityPIDFCoefficients(p, i, d, f);
+        } else {
+            shooter.setPower(0);
+            shooter.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+            push_custom_gains();
+            pidf.setDerivativeFilter(0.2);
+            pidf.setOutputRange(0, 1);
+        }
     }
 
     private void push_custom_gains() {
