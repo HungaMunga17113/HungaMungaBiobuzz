@@ -8,7 +8,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.sun.tools.javac.tree.DCTree;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.util.Conversions;
@@ -30,7 +29,7 @@ public class Main extends OpMode {
     private final ElapsedTime loopTimer = new ElapsedTime();
     private double loopDt;
     private final SlewRateLimiter2D driveLimiter = new SlewRateLimiter2D(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
-    private final SlewRateLimiter rxLimiter = new SlewRateLimiter(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
+    private final SlewRateLimiter rotLimiter = new SlewRateLimiter(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
 
     private int tVel;
 
@@ -71,10 +70,11 @@ public class Main extends OpMode {
 
         transfer.setDirection(Servo.Direction.FORWARD);
 
-        leftBack.setDirection(DcMotorEx.Direction.REVERSE);
-        leftFront.setDirection(DcMotorEx.Direction.FORWARD);
-        rightBack.setDirection(DcMotorEx.Direction.FORWARD);
-        rightFront.setDirection(DcMotorEx.Direction.FORWARD);
+        // positive power means spin wheel forwards
+        leftBack.setDirection(DcMotorEx.Direction.FORWARD);
+        leftFront.setDirection(DcMotorEx.Direction.REVERSE);
+        rightBack.setDirection(DcMotorEx.Direction.REVERSE);
+        rightFront.setDirection(DcMotorEx.Direction.REVERSE);
 
         telemetry.addData("status: ", "initializing");
     }
@@ -101,61 +101,58 @@ public class Main extends OpMode {
     }
 
     private void drive(double dt) {
-
-        // apply deadbands
-        double leftX = -deadband(gamepad1.left_stick_x);
-        double leftY = deadband(gamepad1.left_stick_y);
-        double rightX = -deadband(gamepad1.right_stick_x) * .9;
+        // stick conventions: leftY + = forward, leftX + = strafe right, rightX + = turn right
+        double leftX = deadband(gamepad1.left_stick_x);
+        double leftY = -deadband(gamepad1.left_stick_y);
+        double rightX = deadband(gamepad1.right_stick_x) * 0.9;
 
         // apply curve <=> !slow mode
         boolean aim = gamepad1.left_stick_button;
-        double xCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftX : curve(leftX);
-        double yCurved = aim ? TeleOpConfig.AIM_TURN_SCALE * leftY : curve(leftY);
-        pinpoint.update();
-        double currHeading = pinpoint.getHeading(AngleUnit.DEGREES);
-        telemetry.addData("heading", currHeading);
+        double x = aim ? TeleOpConfig.AIM_TURN_SCALE * leftX : curve(leftX);
+        double y = aim ? TeleOpConfig.AIM_TURN_SCALE * leftY : curve(leftY);
 
         driveLimiter.setRates(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
-        rxLimiter.setRates(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
-        driveLimiter.calculate(xCurved, yCurved, dt);
+        driveLimiter.calculate(x, y, dt);
+        x = driveLimiter.getX();
+        y = driveLimiter.getY();
 
-        xCurved = driveLimiter.getX();
-        yCurved = driveLimiter.getY();
-        double rotOut = rxLimiter.calculate(gamepad1.right_stick_button
+        rotLimiter.setRates(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
+        double rot = 0.8 * rotLimiter.calculate(gamepad1.right_stick_button
                 ? TeleOpConfig.AIM_TURN_SCALE * rightX
                 : curve(rightX), dt);
 
-        double xOut;
-        double yOut;
-        if (TeleOpConfig.useFieldCentricDrive) {
-            rotOut = gamepad1.right_stick_button
-                    ? TeleOpConfig.AIM_TURN_SCALE * rightX
-                    : curve(rightX);
-            xOut = xCurved * Math.cos(Math.toRadians(currHeading)) + yCurved * Math.sin(Math.toRadians((currHeading)));
-            yOut = yCurved * Math.cos(Math.toRadians(currHeading)) - xCurved * Math.sin(Math.toRadians((currHeading)));
-        } else {
-            xOut = xCurved;
-            yOut = yCurved;
-            rotOut = gamepad1.right_stick_button
-                    ? TeleOpConfig.AIM_TURN_SCALE * rightX
-                    : curve(rightX);
-        }
-        rotOut *= 0.8;
-        // update motors
-        double denominator = Math.max(Math.abs(yOut) + Math.abs(xOut) + Math.abs(rotOut), 1.0);
-        leftFront.setPower((yOut + xOut + rotOut) / denominator);
-        leftBack.setPower((yOut - xOut + rotOut) / denominator);
-        rightFront.setPower((yOut - xOut - rotOut) / denominator);
-        rightBack.setPower((yOut + xOut - rotOut) / denominator);
-        if(gamepad1.dpad_left){
+        pinpoint.update();
+        double heading = pinpoint.getHeading(AngleUnit.DEGREES);
+        telemetry.addData("heading", heading);
+        if (gamepad1.dpad_left) {
             pinpoint.resetPosAndIMU();
         }
 
-        // telemetry on rc
-        telemetry.addData("FL: ", (yOut + xOut + rotOut) / denominator);
-        telemetry.addData("BL:", (yOut - xOut + rotOut) / denominator);
-        telemetry.addData("FR:", (yOut - xOut - rotOut) / denominator);
-        telemetry.addData("BR:", (yOut + xOut - rotOut) / denominator);
+        if (TeleOpConfig.useFieldCentricDrive) {
+            double cos = Math.cos(Math.toRadians(heading));
+            double sin = Math.sin(Math.toRadians(heading));
+            double fieldX = x * cos + y * sin;
+            double fieldY = y * cos - x * sin;
+            x = fieldX;
+            y = fieldY;
+        }
+
+        // +y forward, +x right, +rot clockwise
+        double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rot), 1.0);
+        double fl = (y + x + rot) / denominator;
+        double bl = (y - x + rot) / denominator;
+        double fr = (y - x - rot) / denominator;
+        double br = (y + x - rot) / denominator;
+
+        leftFront.setPower(fl);
+        leftBack.setPower(bl);
+        rightFront.setPower(fr);
+        rightBack.setPower(br);
+
+        telemetry.addData("FL: ", fl);
+        telemetry.addData("BL:", bl);
+        telemetry.addData("FR:", fr);
+        telemetry.addData("BR:", br);
     }
 
     private double curve(double input) {
