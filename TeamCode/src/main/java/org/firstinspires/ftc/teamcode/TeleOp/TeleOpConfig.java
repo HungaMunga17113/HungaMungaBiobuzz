@@ -2,12 +2,12 @@ package org.firstinspires.ftc.teamcode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.util.Conversions;
 
-import com.acmerobotics.dashboard.config.Config;
+import com.bylazar.configurables.annotations.Configurable;
 
 import org.firstinspires.ftc.teamcode.util.drivetrain.Curve;
 import org.firstinspires.ftc.teamcode.util.drivetrain.CurveParams;
 
-@Config
+@Configurable
 public class TeleOpConfig {
     /// drivetrain
     public static double AIM_TURN_SCALE = 0.2;

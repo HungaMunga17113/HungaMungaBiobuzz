@@ -1,12 +1,12 @@
 package org.firstinspires.ftc.teamcode.TeleOp.OpModes;
 
-import com.acmerobotics.dashboard.config.Config;
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-@Config
+@Configurable
 @TeleOp(name="shooter TESTER", group="misc")
 public class ShooterTestingOpMode extends OpMode {
     private DcMotorEx shooter;

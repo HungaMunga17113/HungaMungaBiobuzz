@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedro.procedures;
 
+import static org.firstinspires.ftc.teamcode.util.Panels.panels;
+
 import com.pedropathing.math.Pose;
 import com.pedropathing.revhub.localizers.PinpointConfig;
 import com.pedropathing.revhub.localizers.PinpointLocalizer;
@@ -253,10 +255,10 @@ class PinpointOffsets extends TuningOpMode<List<Double>> {
             previous = localizer.pose();
             localizer.update();
 
-            telemetry.addData("heading", localizer.pose().heading());
-            telemetry.addData("pose", localizer.pose());
-            telemetry.addData("previous", previous);
-            telemetry.update();
+            panels.addData("heading", localizer.pose().heading());
+            panels.addData("pose", localizer.pose());
+            panels.addData("previous", previous);
+            panels.update(telemetry);
         }
 
         if (localizer.pose().x() != Pose.zero().x() || localizer.pose().y() != Pose.zero().y()) {

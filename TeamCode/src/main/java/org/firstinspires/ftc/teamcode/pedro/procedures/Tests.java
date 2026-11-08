@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedro.procedures;
 
+import static org.firstinspires.ftc.teamcode.util.Panels.panels;
+
 import com.pedropathing.algorithm.Algorithm;
 import com.pedropathing.drivetrain.DrivePowers;
 import com.pedropathing.drivetrain.Drivetrain;
@@ -303,8 +305,8 @@ class TestsLocalization extends TuningOpMode<Boolean> {
         while (opModeIsActive()) {
             drivetrain.drive(new DrivePowers(-gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x), true);
             localizer.update();
-            telemetry.addData("Pose", localizer.pose());
-            telemetry.update();
+            panels.addData("Pose", localizer.pose());
+            panels.update(telemetry);
         }
         return true;
     }
@@ -392,48 +394,48 @@ class TestsOdometry extends TuningOpMode<Boolean> {
                 case IDLE:
                     drivetrain.drive(new DrivePowers(0, 0, 0), true);
 
-                    telemetry.addData("Test", "Completed");
+                    panels.addData("Test", "Completed");
 
                     Pose pose = localizer.pose();
 
                     if (pose.x() < 0)
-                        telemetry.addData("xPod Direction", "Flipped");
+                        panels.addData("xPod Direction", "Flipped");
                     else if (pose.x() < 2)
-                        telemetry.addData("xPod Resolution", "Too high");
+                        panels.addData("xPod Resolution", "Too high");
                     else if (pose.x() > 144)
-                        telemetry.addData("xPod Resolution", "Too low");
+                        panels.addData("xPod Resolution", "Too low");
                     else {
-                        telemetry.addData("xPod", "Good");
+                        panels.addData("xPod", "Good");
                         passedX = true;
                     }
 
                     if (pose.y() < 0)
-                        telemetry.addData("yPod Direction", "Flipped");
+                        panels.addData("yPod Direction", "Flipped");
                     else if (pose.y() < 2)
-                        telemetry.addData("yPod Resolution", "Too high");
+                        panels.addData("yPod Resolution", "Too high");
                     else if (pose.y() > 144)
-                        telemetry.addData("yPod Resolution", "Too low");
+                        panels.addData("yPod Resolution", "Too low");
                     else {
-                        telemetry.addData("yPod", "Good");
+                        panels.addData("yPod", "Good");
                         passedY = true;
                     }
 
                     if (totalHeading < 0)
-                        telemetry.addData("Heading Direction", "Flipped");
+                        panels.addData("Heading Direction", "Flipped");
                     else if (totalHeading < 0.02)
-                        telemetry.addData("Heading Resolution", "Too high");
+                        panels.addData("Heading Resolution", "Too high");
                     else if (totalHeading > 2 * Math.PI)
-                        telemetry.addData("Heading Resolution", "Too low");
+                        panels.addData("Heading Resolution", "Too low");
                     else {
-                        telemetry.addData("Heading", "Good");
+                        panels.addData("Heading", "Good");
                         passedHeading = true;
                     }
 
                     break;
             }
 
-            telemetry.addData("Pose", localizer.pose());
-            telemetry.update();
+            panels.addData("Pose", localizer.pose());
+            panels.update(telemetry);
         }
         return passedX && passedY && passedHeading;
     }
@@ -475,8 +477,8 @@ class TestsPose extends TuningOpMode<Boolean> {
         localizer.update();
         while (opModeIsActive()) {
             localizer.update();
-            telemetry.addData("Pose", localizer.pose());
-            telemetry.update();
+            panels.addData("Pose", localizer.pose());
+            panels.update(telemetry);
         }
         return true;
     }
