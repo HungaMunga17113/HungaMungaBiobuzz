@@ -8,8 +8,8 @@ import com.qualcomm.robotcore.hardware.Servo;
 public class Transfer {
     private final Servo transfer;
 
-    public Transfer(HardwareMap hardwareMap, String motorName, DcMotorSimple.Direction direction) {
-        transfer = hardwareMap.get(Servo.class, motorName);
+    public Transfer(HardwareMap hardwareMap, String servoName) {
+        transfer = hardwareMap.get(Servo.class, servoName);
     }
 
     public void shoot() {

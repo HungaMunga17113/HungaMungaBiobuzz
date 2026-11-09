@@ -8,7 +8,6 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.TeleOp.TeleOpConfig;
 import org.firstinspires.ftc.teamcode.util.Conversions;
 
-/** Shooter wrapper with simple RPM target using built-in velocity control. */
 public class Shooter {
     private final DcMotorEx shooter;
     private final double ticksPerRev;
@@ -36,9 +35,7 @@ public class Shooter {
         return Conversions.tpsToRpm(shooter.getVelocity(), ticksPerRev);
     }
     public boolean waitForRpm(double targetRPM) {
-        double currentVel = shooter.getVelocity();
-
-        return Math.abs(targetRPM - currentVel) > 100;
+        return Math.abs(targetRPM - getCurrentRpm()) < 100;
 
     }
 
