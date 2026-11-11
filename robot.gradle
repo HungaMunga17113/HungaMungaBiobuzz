@@ -1,0 +1,243 @@
+import groovy.xml.XmlUtil
+import javax.inject.Inject
+
+abstract class RobotTask extends DefaultTask {
+    static final String REMOTE_DIR = '/sdcard/FIRST'
+    static final String PKG = 'com.qualcomm.ftcrobotcontroller'
+    static final String OS = System.getProperty('os.name').toLowerCase()
+    static final boolean MAC = OS.contains('mac')
+    static final boolean WIN = OS.contains('win')
+
+    @Inject abstract ExecOperations getExecOps()
+    @Internal File adb
+    @Internal String serial
+    @Internal String ssid
+    @Internal String pass
+    @Internal File configDir
+    @Internal String prev
+
+    Map run(List<String> cmd) {
+        def out = new ByteArrayOutputStream()
+        try {
+            def r = execOps.exec {
+                commandLine cmd
+                standardOutput = out
+                errorOutput = out
+                ignoreExitValue = true
+            }
+            [code: r.exitValue, out: out.toString().trim()]
+        } catch (e) {
+            [code: -1, out: e.message]
+        }
+    }
+
+    String adbRun(List<String> args, boolean check = true) {
+        def r = run([adb.path] + args)
+        if (check && r.code != 0) throw new GradleException("adb ${args.join(' ')} failed:\n${r.out}")
+        r.out
+    }
+
+    String adbDevice(List<String> args) { adbRun(['-s', serial] + args) }
+
+    boolean online() {
+        adbRun(['devices'], false).readLines().drop(1).any {
+            def cols = it.trim().split('\\s+')
+            cols.length >= 2 && cols[0] == serial && cols[1] == 'device'
+        }
+    }
+
+    boolean reachable() {
+        def (host, port) = serial.split(':')
+        try {
+            new Socket().withCloseable { it.connect(new InetSocketAddress(host, port as int), 1000) }
+            true
+        } catch (IOException ignored) {
+            false
+        }
+    }
+
+    // wifi
+
+    String iface() {
+        def lines = run(['networksetup', '-listallhardwareports']).out.readLines()
+        def i = lines.findIndexOf { it.contains('Wi-Fi') }
+        i >= 0 && i + 1 < lines.size() ? lines[i + 1].split(':', 2)[1].trim() : 'en0'
+    }
+
+    String currentSsid() {
+        if (MAC) {
+            return run(['networksetup', '-listpreferredwirelessnetworks', iface()]).out.readLines().drop(1).find()?.trim()
+        }
+        if (WIN) {
+            def line = run(['netsh', 'wlan', 'show', 'interfaces']).out.readLines().find { it =~ /^\s+SSID\s+:/ }
+            return line?.split(':', 2)?.getAt(1)?.trim()
+        }
+        run(['nmcli', '-t', '-f', 'active,ssid', 'dev', 'wifi']).out.readLines().find { it.startsWith('yes:') }?.substring(4)
+    }
+
+    void addProfile(String name, String pw) {
+        if (run(['netsh', 'wlan', 'show', 'profiles', "name=$name"]).code == 0) return
+        def n = XmlUtil.escapeXml(name)
+        def f = File.createTempFile('rc-wlan', '.xml')
+        f.text = """<?xml version="1.0"?>
+<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+  <name>$n</name>
+  <SSIDConfig><SSID><name>$n</name></SSID></SSIDConfig>
+  <connectionType>ESS</connectionType>
+  <connectionMode>manual</connectionMode>
+  <MSM><security>
+    <authEncryption><authentication>WPA2PSK</authentication><encryption>AES</encryption><useOneX>false</useOneX></authEncryption>
+    <sharedKey><keyType>passPhrase</keyType><protected>false</protected><keyMaterial>${XmlUtil.escapeXml(pw)}</keyMaterial></sharedKey>
+  </security></MSM>
+</WLANProfile>"""
+        run(['netsh', 'wlan', 'add', 'profile', "filename=${f.path}", 'user=current'])
+        f.delete()
+    }
+
+    boolean joinWifi(String name, String pw) {
+        if (MAC) {
+            // networksetup exits 0 on failure, errors go to stdout
+            def r = run(['networksetup', '-setairportnetwork', iface(), name] + (pw ? [pw] : []))
+            if (r.out) logger.lifecycle(r.out)
+            return r.code == 0 && !r.out
+        }
+        if (WIN) {
+            if (pw) addProfile(name, pw)
+            return run(['netsh', 'wlan', 'connect', "name=$name"]).code == 0
+        }
+        run(pw ? ['nmcli', 'dev', 'wifi', 'connect', name, 'password', pw] : ['nmcli', 'con', 'up', 'id', name]).code == 0
+    }
+
+    void resetWifi() {
+        if (MAC) {
+            def i = iface()
+            run(['networksetup', '-setairportpower', i, 'off'])
+            run(['networksetup', '-setairportpower', i, 'on'])
+        } else if (WIN) {
+            run(['netsh', 'wlan', 'disconnect'])
+        } else {
+            run(['nmcli', 'radio', 'wifi', 'off'])
+            run(['nmcli', 'radio', 'wifi', 'on'])
+        }
+    }
+
+    void fail(String msg) {
+        if (prev && prev != ssid) {
+            logger.lifecycle("rejoining $prev")
+            if (!joinWifi(prev, null)) resetWifi()
+        }
+        throw new GradleException(msg)
+    }
+
+    void joinRc() {
+        if (reachable()) return
+        prev = currentSsid()
+        logger.lifecycle("joining $ssid")
+        if (!joinWifi(ssid, pass)) fail("couldn't join $ssid")
+        def end = System.currentTimeMillis() + 15000
+        while (!reachable()) {
+            if (System.currentTimeMillis() > end) fail("rc not reachable at $serial")
+            sleep(1000)
+        }
+    }
+
+    // adb
+
+    void connect() {
+        if (online()) return
+        if (!serial.contains(':')) throw new GradleException("$serial is not connected over usb")
+        joinRc()
+        adbRun(['disconnect', serial], false)
+        adbRun(['connect', serial], false)
+        if (!online()) fail("adb connect to $serial failed")
+        logger.lifecycle("connected to $serial")
+    }
+
+    void restartApp() {
+        adbDevice(['shell', "am force-stop $PKG"])
+        adbDevice(['shell', "monkey -p $PKG -c android.intent.category.LAUNCHER 1"])
+        logger.lifecycle('rc restarted')
+    }
+}
+
+def resolveAdb = {
+    if (project.hasProperty('robot.adb')) return file(project.property('robot.adb'))
+    def exe = RobotTask.WIN ? 'adb.exe' : 'adb'
+    def android = project.extensions.findByName('android')
+    if (android != null) {
+        try {
+            def f = android.adbExecutable
+            if (f?.exists()) return f
+        } catch (ignored) {
+        }
+    }
+    def props = new Properties()
+    def local = rootProject.file('local.properties')
+    if (local.exists()) local.withInputStream { props.load(it) }
+    def sdk = [props.getProperty('sdk.dir'), System.getenv('ANDROID_HOME'), System.getenv('ANDROID_SDK_ROOT')]
+            .find { it && new File(it, "platform-tools/$exe").exists() }
+    sdk ? new File(sdk, "platform-tools/$exe") : new File(exe)
+}
+
+def setting = { String prop, String env, String fallback ->
+    project.findProperty(prop) ?: System.getenv(env) ?: fallback
+}
+
+def robotTask = { String name, String desc, Closure action ->
+    tasks.register(name, RobotTask) { t ->
+        t.group = 'robot'
+        t.description = desc
+        t.adb = resolveAdb()
+        t.serial = setting('robot.serial', 'RC_SERIAL', '192.168.43.1:5555')
+        t.ssid = setting('robot.ssid', 'RC_SSID', '17113-RC')
+        t.pass = setting('robot.pass', 'RC_PASS', 'password1')
+        t.configDir = rootProject.file(project.findProperty('robot.configDir') ?: 'robot-config')
+        t.doLast { action(t) }
+    }
+}
+
+robotTask('rcConnect', 'join the rc wifi and adb connect, rejoin previous wifi on failure') { RobotTask t ->
+    if (t.online()) {
+        t.logger.lifecycle("already connected to ${t.serial}")
+        return
+    }
+    t.connect()
+}
+
+robotTask('rcRestart', 'restart the robot controller app') { RobotTask t ->
+    t.connect()
+    t.restartApp()
+}
+
+robotTask('pushConfig', 'push robot-config/*.xml to the robot controller and restart the rc app') { RobotTask t ->
+    def files = (t.configDir.listFiles({ it.name.endsWith('.xml') } as FileFilter) ?: []).sort { it.name }
+    if (!files) throw new GradleException("no .xml files in ${t.configDir}")
+    files.each { f ->
+        def root
+        try {
+            root = new XmlSlurper().parse(f).name()
+        } catch (e) {
+            throw new GradleException("${f.name} is not valid xml: ${e.message}")
+        }
+        if (root != 'Robot') throw new GradleException("${f.name} is not a robot configuration")
+    }
+    t.connect()
+    files.each { f ->
+        t.adbDevice(['push', f.path, "${RobotTask.REMOTE_DIR}/${f.name}"])
+        t.logger.lifecycle("pushed ${f.name}")
+    }
+    t.restartApp()
+}
+
+robotTask('pullConfig', 'pull robot configurations from the robot controller into robot-config/') { RobotTask t ->
+    t.connect()
+    def remote = t.adbDevice(['shell', "grep -l '<Robot' ${RobotTask.REMOTE_DIR}/*.xml 2>/dev/null; true"])
+            .readLines()*.trim().findAll { it.endsWith('.xml') }
+    if (!remote) throw new GradleException("no robot configurations in ${RobotTask.REMOTE_DIR}")
+    t.configDir.mkdirs()
+    remote.each { path ->
+        def name = path.substring(path.lastIndexOf('/') + 1)
+        t.adbDevice(['pull', path, new File(t.configDir, name).path])
+        t.logger.lifecycle("pulled $name")
+    }
+}
