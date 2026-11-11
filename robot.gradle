@@ -204,7 +204,7 @@ def robotTask = { String name, String desc, Closure action ->
         t.adb = resolveAdb()
         t.serial = setting('robot.serial', 'RC_SERIAL', '192.168.43.1:5555')
         t.ssid = setting('robot.ssid', 'RC_SSID', '17113-RC')
-        t.pass = setting('robot.pass', 'RC_PASS', 'password1')
+        t.pass = setting('robot.pass', 'RC_PASS', 'hungamunga')
         t.configDir = rootProject.file(project.findProperty('robot.configDir') ?: 'robot-config')
         t.doLast { action(t) }
     }

@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.util.Conversions;
+import org.firstinspires.ftc.teamcode.util.drivetrain.RotateToHeading;
 import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter;
 import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter2D;
 
@@ -20,10 +21,10 @@ import java.util.List;
 public class Main extends OpMode {
     private DcMotorEx leftBack, rightBack, leftFront, rightFront, intake, shooter;
     private Servo transfer;
+    private final RotateToHeading snap = new RotateToHeading();
 
     private GoBildaPinpointDriver pinpoint;
 
-    ///TODO: SERVO STUFF
     private List<LynxModule> allHubs;
 
     private final ElapsedTime loopTimer = new ElapsedTime();
@@ -32,6 +33,7 @@ public class Main extends OpMode {
     private final SlewRateLimiter rotLimiter = new SlewRateLimiter(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
 
     private int tVel;
+    private boolean prevY;
 
     @Override
     public void init() {
@@ -122,11 +124,23 @@ public class Main extends OpMode {
                 : curve(rightX), dt);
 
         pinpoint.update();
+
         double heading = pinpoint.getHeading(AngleUnit.DEGREES);
         telemetry.addData("heading", heading);
+
         if (gamepad1.dpad_left) {
             pinpoint.resetPosAndIMU();
+            snap.cancel();
         }
+
+        if (gamepad1.x) snap.captureTarget(heading);
+        if (gamepad1.y && !prevY) snap.start();
+
+        prevY = gamepad1.y;
+        rot = snap.calculate(heading, rot, dt);
+
+        telemetry.addData("snap", snap.isActive() ? "active" : snap.hasTarget() ? "ready" : "no target");
+        telemetry.addData("snap target", snap.getTarget());
 
         if (TeleOpConfig.useFieldCentricDrive) {
             double cos = Math.cos(Math.toRadians(heading));
