@@ -179,6 +179,20 @@ def resolveAdb = {
     sdk ? new File(sdk, "platform-tools/$exe") : new File(exe)
 }
 
+def resolveScrcpy = {
+    if (project.hasProperty('robot.scrcpy')) return file(project.property('robot.scrcpy'))
+    def exe = RobotTask.WIN ? 'scrcpy.exe' : 'scrcpy'
+    def home = System.getProperty('user.home')
+    // ide launched from finder doesn't get the shell path
+    def dirs = (System.getenv('PATH') ?: '').split(File.pathSeparator).toList()
+    dirs += RobotTask.WIN ? [
+            "${System.getenv('LOCALAPPDATA')}/Microsoft/WinGet/Links",
+            "$home/scoop/shims",
+            'C:/ProgramData/chocolatey/bin',
+    ] : ['/opt/local/bin', '/opt/homebrew/bin', '/usr/local/bin', "$home/.local/bin"]
+    dirs.collect { new File(it, exe) }.find { it.canExecute() }
+}
+
 def setting = { String prop, String env, String fallback ->
     project.findProperty(prop) ?: System.getenv(env) ?: fallback
 }
@@ -207,6 +221,25 @@ robotTask('rcConnect', 'join the rc wifi and adb connect, rejoin previous wifi o
 robotTask('rcRestart', 'restart the robot controller app') { RobotTask t ->
     t.connect()
     t.restartApp()
+}
+
+robotTask('rcMirror', 'mirror the rc screen with scrcpy') { RobotTask t ->
+    def exe = resolveScrcpy()
+    if (!exe) {
+        def hint = RobotTask.WIN ? 'winget install Genymobile.scrcpy' : 'sudo port install scrcpy  (or: brew install scrcpy)'
+        throw new GradleException("scrcpy not found, install it:\n  $hint\nor set robot.scrcpy=/path/to/scrcpy in ~/.gradle/gradle.properties")
+    }
+    t.connect()
+    def log = new File(t.temporaryDir, 'scrcpy.log')
+    def extra = (project.findProperty('robot.scrcpyArgs') ?: '').toString().tokenize()
+    def pb = new ProcessBuilder([exe.path, '-s', t.serial, '--no-audio', '--window-title', 'Robot Controller'] + extra)
+            .redirectErrorStream(true)
+            .redirectOutput(log)
+    pb.environment().put('ADB', t.adb.path)
+    def p = pb.start()
+    sleep(2000)
+    if (!p.alive) throw new GradleException("scrcpy exited (${p.exitValue()}):\n${log.text.trim()}")
+    t.logger.lifecycle('mirroring rc')
 }
 
 robotTask('pushConfig', 'push robot-config/*.xml to the robot controller and restart the rc app') { RobotTask t ->
