@@ -12,7 +12,6 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.teamcode.util.Conversions;
 import org.firstinspires.ftc.teamcode.util.drivetrain.RotateToHeading;
 import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter;
@@ -229,7 +228,7 @@ public class Main extends OpMode {
             snap.start();
         }
         prevSnapBtn = snapBtn;
-        rot = snap.calculate(heading, rot, dt); // manual overrides
+        rot = snap.calculate(heading, rightX == 0 ? 0 : rot, dt); // raw stick overrides, ignores slew decay
 
         localizationTelemetry();
         telemetry.addData("field half", "global %s / driver-rel %s",
@@ -285,7 +284,6 @@ public class Main extends OpMode {
         telemetry.addData("speed", Conversions.tpsToRpm(shooter.getVelocity(), Conversions.TPR_6000_RPM));
         telemetry.addData("target speed", TeleOpConfig.rpm_1);
        // telemetry.addData("input speed", tVel);
-        telemetry.update();
         //shooter.setPower( (gamepad1.right_trigger>0.2) ? -1 :  0);
 
     }

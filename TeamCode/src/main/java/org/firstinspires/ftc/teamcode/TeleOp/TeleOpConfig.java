@@ -22,9 +22,9 @@ public class TeleOpConfig {
     // each alliance localizes on the close side, in one of GLOBAL top or GLOBAL bottom
     public static double FIELD_SIZE = 142; // shud be 144 but 142 realistic
 
-    // localization poses (driver-relative rx)
-    public static double BLUE_LOC_X = 8,   BLUE_TOP_Y = 132, BLUE_TOP_H = 0,   BLUE_BOTTOM_Y = 8, BLUE_BOTTOM_H = 180;
-    public static double RED_LOC_X  = 132, RED_TOP_Y  = 132, RED_TOP_H  = 180, RED_BOTTOM_Y  = 8, RED_BOTTOM_H  = 0;
+    // localization poses (global, picked by driver-rel dpad)
+    public static double BLUE_LOC_X = 8,   BLUE_TOP_Y = 132, BLUE_TOP_H = -90,   BLUE_BOTTOM_Y = 8, BLUE_BOTTOM_H = 90;
+    public static double RED_LOC_X  = 132, RED_TOP_Y  = 132, RED_TOP_H  = -90, RED_BOTTOM_Y  = 8, RED_BOTTOM_H  = 90;
 
     // driver's forward
     public static double BLUE_FORWARD_H = 0, RED_FORWARD_H = 180;
