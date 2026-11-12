@@ -23,14 +23,13 @@ public class TeleOpConfig {
     public static double FIELD_SIZE = 142; // shud be 144 but 142 realistic
 
     // localization poses (global, picked by driver-rel dpad)
-    public static double BLUE_LOC_X = 8,   BLUE_TOP_Y = 132, BLUE_TOP_H = -90,   BLUE_BOTTOM_Y = 8, BLUE_BOTTOM_H = 90;
-    public static double RED_LOC_X  = 132, RED_TOP_Y  = 132, RED_TOP_H  = -90, RED_BOTTOM_Y  = 8, RED_BOTTOM_H  = 90;
+    public static double BLUE_LOC_X = 8,   BLUE_TOP_Y = 134, BLUE_TOP_H = -90,   BLUE_BOTTOM_Y = 8, BLUE_BOTTOM_H = 90;
+    public static double RED_LOC_X  = 134, RED_TOP_Y  = 134, RED_TOP_H  = -90, RED_BOTTOM_Y  = 8, RED_BOTTOM_H  = 90;
 
     // driver's forward
     public static double BLUE_FORWARD_H = 0, RED_FORWARD_H = 180;
 
     // snap headings (on alliance, global)
-    // TODO tune: these are placeholders, set to the heading that faces the goal from each shooting half
     public static double BLUE_TOP_SNAP_H = -90,  BLUE_BOTTOM_SNAP_H = 90;
     public static double RED_TOP_SNAP_H = -90, RED_BOTTOM_SNAP_H = 90;
 
@@ -52,7 +51,7 @@ public class TeleOpConfig {
     public static double bkI = 4;
     public static double bkD = 20;
     public static double bkF = 10.2;
-
+/*
     // custom pid+f
     public static double ckP = 60;
     public static double ckI = 0;
@@ -66,5 +65,5 @@ public class TeleOpConfig {
     public static double vkS = 0;
     public static double vkV = 0;
     public static double vkA = 0;
-
+*/
 }
