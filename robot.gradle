@@ -150,6 +150,7 @@ abstract class RobotTask extends DefaultTask {
         adbRun(['disconnect', serial], false)
         adbRun(['connect', serial], false)
         if (!online()) fail("adb connect to $serial failed")
+        //run('gradlew ')
         logger.lifecycle("connected to $serial")
     }
 

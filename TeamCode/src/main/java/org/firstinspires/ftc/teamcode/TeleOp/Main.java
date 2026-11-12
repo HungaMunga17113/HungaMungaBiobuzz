@@ -10,6 +10,9 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.teamcode.util.Conversions;
 import org.firstinspires.ftc.teamcode.util.drivetrain.RotateToHeading;
 import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter;
@@ -33,7 +36,13 @@ public class Main extends OpMode {
     private final SlewRateLimiter rotLimiter = new SlewRateLimiter(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
 
     private int tVel;
-    private boolean prevY;
+    private enum Alliance { NONE, BLUE, RED }
+
+    private boolean prevSnapBtn, prevDpadLeft, prevDpadRight;
+    private Alliance alliance = Alliance.NONE;
+    private boolean localized;
+    private String locCorner = "none"; // e.g. "rel LEFT (global TOP)"
+    private double fieldForwardH = 0;  // GLOBAL heading que es "forward" for owen/arnav -- facing the other box+
 
     @Override
     public void init() {
@@ -82,7 +91,87 @@ public class Main extends OpMode {
     }
 
     @Override
+    public void init_loop() {
+        // allow localizing while waiting for start
+        pinpoint.update();
+        localize();
+        localizationTelemetry();
+        telemetry.update();
+    }
+
+    @Override
     public void start() { loopTimer.reset(); }
+
+    /**
+     * gamepad2:
+     *   X = BLUE alliance, B = RED alliance
+     *   dpad left/right = robot driver-relative localization
+     * returns the new GLOBAL heading if a pose was just set, else NaN
+     */
+    private double localize() {
+        if (gamepad2.x) selectAlliance(Alliance.BLUE);
+        else if (gamepad2.b) selectAlliance(Alliance.RED);
+
+        boolean left = gamepad2.dpad_left, right = gamepad2.dpad_right;
+        double newH = Double.NaN;
+        if (alliance != Alliance.NONE) {
+            if (left && !prevDpadLeft) newH = localizeRelative(true);
+            else if (right && !prevDpadRight) newH = localizeRelative(false);
+        }
+        prevDpadLeft = left;
+        prevDpadRight = right;
+        return newH;
+    }
+
+    private void selectAlliance(Alliance a) {
+        if (alliance == a) return;
+        alliance = a;
+        fieldForwardH = a == Alliance.BLUE ? TeleOpConfig.BLUE_FORWARD_H : TeleOpConfig.RED_FORWARD_H;
+        localized = false; // corner poses differ per alliance, must re-localize
+        locCorner = "none";
+        snap.cancel();
+    }
+
+    /** REL left/right -> GLOB top/bottom dep which alliance */
+    private double localizeRelative(boolean relLeft) {
+        boolean globalTop = (alliance == Alliance.BLUE) == relLeft; // blue: rel left = top; red: rel left = bottom
+        boolean blue = alliance == Alliance.BLUE;
+        double x = blue ? TeleOpConfig.BLUE_LOC_X : TeleOpConfig.RED_LOC_X;
+        double y, h;
+        if (blue) {
+            y = globalTop ? TeleOpConfig.BLUE_TOP_Y : TeleOpConfig.BLUE_BOTTOM_Y;
+            h = globalTop ? TeleOpConfig.BLUE_TOP_H : TeleOpConfig.BLUE_BOTTOM_H;
+        } else {
+            y = globalTop ? TeleOpConfig.RED_TOP_Y : TeleOpConfig.RED_BOTTOM_Y;
+            h = globalTop ? TeleOpConfig.RED_TOP_H : TeleOpConfig.RED_BOTTOM_H;
+        }
+        pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, x, y, AngleUnit.DEGREES, h));
+        snap.cancel();
+        localized = true;
+        locCorner = "rel " + (relLeft ? "LEFT" : "RIGHT") + " (global " + (globalTop ? "TOP" : "BOTTOM") + ")";
+        return h;
+    }
+
+    /** GLOBAL top/bottom half of the field, from odom */
+    private boolean inGlobalTop() {
+        return pinpoint.getPosY(DistanceUnit.INCH) > TeleOpConfig.FIELD_SIZE / 2;
+    }
+
+    /** owen; blue sees global top as their left, red sees global top as their right */
+    private boolean inRelativeLeft(boolean globalTop) {
+        return (alliance == Alliance.BLUE) == globalTop;
+    }
+
+    private double snapHeading(boolean globalTop) {
+        if (alliance == Alliance.BLUE) return globalTop ? TeleOpConfig.BLUE_TOP_SNAP_H : TeleOpConfig.BLUE_BOTTOM_SNAP_H;
+        return globalTop ? TeleOpConfig.RED_TOP_SNAP_H : TeleOpConfig.RED_BOTTOM_SNAP_H;
+    }
+
+    private void localizationTelemetry() {
+        telemetry.addData("alliance", alliance == Alliance.NONE ? "NONE - gp2 X = blue, B = red" : alliance);
+        telemetry.addData("localized", localized ? locCorner
+                : alliance == Alliance.NONE ? "NO - pick alliance first" : "NO - gp2 dpad left/right");
+    }
 
     @Override
     public void loop() {
@@ -128,23 +217,31 @@ public class Main extends OpMode {
         double heading = pinpoint.getHeading(AngleUnit.DEGREES);
         telemetry.addData("heading", heading);
 
-        if (gamepad1.dpad_left) {
-            pinpoint.resetPosAndIMU();
-            snap.cancel();
+        // alliance + localize on gp2
+        double newH = localize();
+        if (!Double.isNaN(newH)) heading = newH;
+
+        // snap to face the goal, heading based on alliance + current half of field
+        boolean globalTop = inGlobalTop();
+        boolean snapBtn = gamepad1.left_bumper;
+        if (snapBtn && !prevSnapBtn && localized) {
+            snap.setTarget(snapHeading(globalTop));
+            snap.start();
         }
+        prevSnapBtn = snapBtn;
+        rot = snap.calculate(heading, rot, dt); // manual overrides
 
-        if (gamepad1.x) snap.captureTarget(heading);
-        if (gamepad1.y && !prevY) snap.start();
-
-        prevY = gamepad1.y;
-        rot = snap.calculate(heading, rot, dt);
-
+        localizationTelemetry();
+        telemetry.addData("field half", "global %s / driver-rel %s",
+                globalTop ? "TOP" : "BOTTOM", inRelativeLeft(globalTop) ? "LEFT" : "RIGHT");
+        telemetry.addData("pose", "x %.1f  y %.1f", pinpoint.getPosX(DistanceUnit.INCH), pinpoint.getPosY(DistanceUnit.INCH));
         telemetry.addData("snap", snap.isActive() ? "active" : snap.hasTarget() ? "ready" : "no target");
         telemetry.addData("snap target", snap.getTarget());
 
         if (TeleOpConfig.useFieldCentricDrive) {
-            double cos = Math.cos(Math.toRadians(heading));
-            double sin = Math.sin(Math.toRadians(heading));
+            double rel = Math.toRadians(heading - fieldForwardH);
+            double cos = Math.cos(rel);
+            double sin = Math.sin(rel);
             double fieldX = x * cos + y * sin;
             double fieldY = y * cos - x * sin;
             x = fieldX;

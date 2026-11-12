@@ -16,6 +16,24 @@ public class TeleOpConfig {
     public static CurveParams CURVE_PARAMS = new CurveParams();
     public static boolean useFieldCentricDrive = true;
 
+    /// field localization + snap-to-goal
+    // off GLOBAL (pedro) positions
+    // heading deg ccw+, 0 = facing right (+x) como el unit circle
+    // each alliance localizes on the close side, in one of GLOBAL top or GLOBAL bottom
+    public static double FIELD_SIZE = 142; // shud be 144 but 142 realistic
+
+    // localization poses (driver-relative rx)
+    public static double BLUE_LOC_X = 8,   BLUE_TOP_Y = 132, BLUE_TOP_H = 0,   BLUE_BOTTOM_Y = 8, BLUE_BOTTOM_H = 180;
+    public static double RED_LOC_X  = 132, RED_TOP_Y  = 132, RED_TOP_H  = 180, RED_BOTTOM_Y  = 8, RED_BOTTOM_H  = 0;
+
+    // driver's forward
+    public static double BLUE_FORWARD_H = 0, RED_FORWARD_H = 180;
+
+    // snap headings (on alliance, global)
+    // TODO tune: these are placeholders, set to the heading that faces the goal from each shooting half
+    public static double BLUE_TOP_SNAP_H = -90,  BLUE_BOTTOM_SNAP_H = 90;
+    public static double RED_TOP_SNAP_H = -90, RED_BOTTOM_SNAP_H = 90;
+
     /// slew vals
     public static double ACCEL_UP = 4;
     public static double ACCEL_DOWN = 11; // higher = faster stop

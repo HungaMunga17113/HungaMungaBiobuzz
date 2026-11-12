@@ -20,7 +20,7 @@ public class RotateToHeading {
 
     private final PIDControllerEx pid = new PIDControllerEx(kP, 0, kD);
 
-    private double target;
+    private double targetRx;
     private boolean hasTarget, active;
     private double settledMs;
 
@@ -29,7 +29,7 @@ public class RotateToHeading {
     }
 
     public void setTarget(double deg) {
-        target = wrap(deg);
+        targetRx = wrap(deg);
         hasTarget = true;
     }
 
@@ -47,7 +47,7 @@ public class RotateToHeading {
 
     public boolean isActive() { return active; }
     public boolean hasTarget() { return hasTarget; }
-    public double getTarget() { return target; }
+    public double getTarget() { return targetRx; }
     public double getError() { return pid.getError(); }
 
     /** rot power while active, else stickRot; stick input past overrideDb cancels */
@@ -58,7 +58,7 @@ public class RotateToHeading {
         pid.setPID(kP, 0, kD)
                 .setOutputRange(-maxPower, maxPower)
                 .setTolerance(tolerance, velTolerance);
-        double ccw = pid.calculate(headingDeg, target, dt);
+        double ccw = pid.calculate(headingDeg, targetRx, dt);
 
         if (pid.atSetpoint()) {
             settledMs += dt * 1000;
