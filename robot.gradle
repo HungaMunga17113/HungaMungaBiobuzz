@@ -46,6 +46,10 @@ abstract class RobotTask extends DefaultTask {
         }
     }
 
+    boolean anyOnline() {
+        adbRun(['devices'], false).readLines().drop(1).any { it.trim().split('\\s+').last() == 'device' }
+    }
+
     boolean reachable() {
         def (host, port) = serial.split(':')
         try {
@@ -273,5 +277,12 @@ robotTask('pullConfig', 'pull robot configurations from the robot controller int
         def name = path.substring(path.lastIndexOf('/') + 1)
         t.adbDevice(['pull', path, new File(t.configDir, name).path])
         t.logger.lifecycle("pulled $name")
+    }
+}
+
+tasks.matching { it.name == 'deploySloth' }.configureEach {
+    doFirst {
+        def t = tasks.named('rcConnect', RobotTask).get()
+        if (!t.anyOnline()) t.connect()
     }
 }
