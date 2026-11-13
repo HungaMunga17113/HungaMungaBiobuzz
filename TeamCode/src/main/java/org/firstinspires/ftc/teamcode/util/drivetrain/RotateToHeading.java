@@ -67,7 +67,7 @@ public class RotateToHeading {
         }
         settledMs = 0;
 
-        if (Math.abs(ccw) < kStatic) ccw = Math.signum(pid.getError()) * kStatic;
+        if (Math.abs(pid.getError()) > tolerance && Math.abs(ccw) < kStatic) ccw = Math.signum(pid.getError()) * kStatic;
         return -ccw;
     }
 
