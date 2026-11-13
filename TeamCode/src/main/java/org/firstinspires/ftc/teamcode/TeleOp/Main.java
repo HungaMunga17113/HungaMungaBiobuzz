@@ -13,7 +13,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.teamcode.util.Conversions;
-import org.firstinspires.ftc.teamcode.util.drivetrain.RotateToHeading;
+import org.firstinspires.ftc.teamcode.util.control.PIDControllerEx;
 import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter;
 import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter2D;
 
@@ -23,7 +23,7 @@ import java.util.List;
 public class Main extends OpMode {
     private DcMotorEx leftBack, rightBack, leftFront, rightFront, intake, shooter;
     private Servo transfer;
-    private final RotateToHeading snap = new RotateToHeading();
+    private final PIDControllerEx lockPid = new PIDControllerEx(TeleOpConfig.LOCK_P, 0, TeleOpConfig.LOCK_D);
 
     private GoBildaPinpointDriver pinpoint;
 
@@ -37,7 +37,7 @@ public class Main extends OpMode {
     private int tVel;
     private enum Alliance { NONE, BLUE, RED }
 
-    private boolean prevSnapBtn, prevDpadLeft, prevDpadRight;
+    private boolean locked, prevLockBtn, prevDpadLeft, prevDpadRight;
     private Alliance alliance = Alliance.NONE;
     private boolean localized;
     private String locCorner = "none"; // e.g. "rel LEFT (global TOP)"
@@ -58,6 +58,7 @@ public class Main extends OpMode {
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
 
         pinpoint.resetPosAndIMU();
+        lockPid.setContinuousInput(-180, 180).setDerivativeFilter(0.3);
 
         transfer = hardwareMap.get(Servo.class, "transfer");
 
@@ -128,7 +129,7 @@ public class Main extends OpMode {
         fieldForwardH = a == Alliance.BLUE ? TeleOpConfig.BLUE_FORWARD_H : TeleOpConfig.RED_FORWARD_H;
         localized = false; // corner poses differ per alliance, must re-localize
         locCorner = "none";
-        snap.cancel();
+        locked = false;
     }
 
     /** REL left/right -> GLOB top/bottom dep which alliance */
@@ -145,7 +146,7 @@ public class Main extends OpMode {
             h = globalTop ? TeleOpConfig.RED_TOP_H : TeleOpConfig.RED_BOTTOM_H;
         }
         pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, x, y, AngleUnit.DEGREES, h));
-        snap.cancel();
+        lockPid.reset();
         localized = true;
         locCorner = "rel " + (relLeft ? "LEFT" : "RIGHT") + " (global " + (globalTop ? "TOP" : "BOTTOM") + ")";
         return h;
@@ -161,9 +162,12 @@ public class Main extends OpMode {
         return (alliance == Alliance.BLUE) == globalTop;
     }
 
-    private double snapHeading(boolean globalTop) {
-        if (alliance == Alliance.BLUE) return globalTop ? TeleOpConfig.BLUE_TOP_SNAP_H : TeleOpConfig.BLUE_BOTTOM_SNAP_H;
-        return globalTop ? TeleOpConfig.RED_TOP_SNAP_H : TeleOpConfig.RED_BOTTOM_SNAP_H;
+    /** alliance goal in the current global half */
+    private double[] goal(boolean globalTop) {
+        if (alliance == Alliance.BLUE) return globalTop
+                ? new double[]{TeleOpConfig.BLUE_TOP_GOAL_X, TeleOpConfig.BLUE_TOP_GOAL_Y}
+                : new double[]{TeleOpConfig.BLUE_BOTTOM_GOAL_X, TeleOpConfig.BLUE_BOTTOM_GOAL_Y};
+        return new double[]{TeleOpConfig.RED_GOAL_X, globalTop ? TeleOpConfig.RED_TOP_GOAL_Y : TeleOpConfig.RED_BOTTOM_GOAL_Y};
     }
 
     private void localizationTelemetry() {
@@ -207,7 +211,7 @@ public class Main extends OpMode {
         y = driveLimiter.getY();
 
         rotLimiter.setRates(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
-        double rot = 0.8 * rotLimiter.calculate(gamepad1.right_stick_button
+        double rot = 0.8 * rotLimiter.calculate(locked ? 0 : gamepad1.right_stick_button
                 ? TeleOpConfig.AIM_TURN_SCALE * rightX
                 : curve(rightX), dt);
 
@@ -220,22 +224,35 @@ public class Main extends OpMode {
         double newH = localize();
         if (!Double.isNaN(newH)) heading = newH;
 
-        // snap to face the goal, heading based on alliance + current half of field
+        // goal lock toggle, back (shooter) faces goal, r_x disabled while locked
         boolean globalTop = inGlobalTop();
-        boolean snapBtn = gamepad1.left_bumper;
-        if (snapBtn && !prevSnapBtn && localized) {
-            snap.setTarget(snapHeading(globalTop));
-            snap.start();
+        boolean lockBtn = gamepad1.left_bumper;
+        if (lockBtn && !prevLockBtn && localized) {
+            locked = !locked;
+            lockPid.reset();
         }
-        prevSnapBtn = snapBtn;
-        rot = snap.calculate(heading, snap.isActive() && rightX == 0 ? 0 : rot, dt); // raw stick overrides, ignores slew decay
+        prevLockBtn = lockBtn;
+
+        double[] g = goal(globalTop);
+        double dx = g[0] - pinpoint.getPosX(DistanceUnit.INCH), dy = g[1] - pinpoint.getPosY(DistanceUnit.INCH);
+        double goalDist = Math.hypot(dx, dy);
+        double targetH = Math.toDegrees(Math.atan2(dy, dx)) + 180;
+        if (locked) {
+            if (goalDist > TeleOpConfig.LOCK_MIN_DIST) {
+                lockPid.setPID(TeleOpConfig.LOCK_P, 0, TeleOpConfig.LOCK_D)
+                        .setOutputRange(-TeleOpConfig.LOCK_MAX_POWER, TeleOpConfig.LOCK_MAX_POWER);
+                rot = -Conversions.clamp(lockPid.calculate(heading, targetH, dt),
+                        -TeleOpConfig.LOCK_MAX_POWER, TeleOpConfig.LOCK_MAX_POWER); // pid ccw, +rot cw
+            } else rot = 0;
+        }
 
         localizationTelemetry();
         telemetry.addData("field half", "global %s / driver-rel %s",
                 globalTop ? "TOP" : "BOTTOM", inRelativeLeft(globalTop) ? "LEFT" : "RIGHT");
         telemetry.addData("pose", "x %.1f  y %.1f", pinpoint.getPosX(DistanceUnit.INCH), pinpoint.getPosY(DistanceUnit.INCH));
-        telemetry.addData("snap", snap.isActive() ? "active" : snap.hasTarget() ? "ready" : "no target");
-        telemetry.addData("snap target", snap.getTarget());
+        telemetry.addData("lock", locked ? "LOCKED" : localized ? "off - gp1 LB" : "off - localize first");
+        telemetry.addData("goal", "x %.1f  y %.1f  dist %.1f", g[0], g[1], goalDist);
+        telemetry.addData("lock target h", targetH);
 
         if (TeleOpConfig.useFieldCentricDrive) {
             double rel = Math.toRadians(heading - fieldForwardH);

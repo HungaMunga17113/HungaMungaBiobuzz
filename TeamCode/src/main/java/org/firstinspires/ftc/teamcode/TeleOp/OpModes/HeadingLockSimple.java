@@ -22,32 +22,20 @@ import org.firstinspires.ftc.teamcode.util.drivetrain.SlewRateLimiter2D;
 import java.util.List;
 
 /**
- * target-centric drive, orbits a locked point
+ * atan2 goal lock, shooter (back) faces goal, strafing orbits
 
- * controls:
- * a = toggle lock
- * locked: l_y = toward/away, l_x = orbit (holds radius), r_x = manual turn override
- * unlocked: field centric
- * l_stick_btn = slow
- * dpad left = reset pose
+ * gp1: left bumper = toggle lock (r_x disabled while locked)
+ * gp2: X = blue, B = red, dpad left/right = driver-relative localize
  */
 @Configurable
-@TeleOp(name = "loclock test not geh", group = "Main")
+@TeleOp(name = "loclock simple", group = "Main")
 public class HeadingLockSimple extends OpMode {
-    /// field (pedro coords, in / deg)
-    public static double startX = 132, startY = 8, startH = 90;
-    public static double targetX = 8, targetY = 8;
-    public static double faceOffset = 0; // deg, eg 180 to face away
-
-    /// lock
-    public static double minDist = 12; // in, no aim/approach inside this
-    public static double radiusP = 0.04; // power per in of radius err
-    public static double radiusMaxPower = 0.4;
-
-    /// heading pid (deg in, power out)
-    public static double hP = 0.025, hI = 0, hD = 0.0015;
-    public static double hFF = 0.004; // power per deg/s
+    /// heading pd (deg in, power out)
+    public static double hP = 0.025, hD = 0.0015;
     public static double hMaxPower = 0.8;
+    public static double minDist = 6; // in, no aim inside this
+
+    private enum Alliance { NONE, BLUE, RED }
 
     private DcMotorEx leftBack, rightBack, leftFront, rightFront;
     private GoBildaPinpointDriver pinpoint;
@@ -56,11 +44,16 @@ public class HeadingLockSimple extends OpMode {
     private final ElapsedTime loopTimer = new ElapsedTime();
     private final SlewRateLimiter2D driveLimiter = new SlewRateLimiter2D(TeleOpConfig.ACCEL_UP, TeleOpConfig.ACCEL_DOWN);
     private final SlewRateLimiter rotLimiter = new SlewRateLimiter(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
-    private final PIDControllerEx headingPid = new PIDControllerEx(hP, hI, hD);
+    private final PIDControllerEx headingPid = new PIDControllerEx(hP, 0, hD);
 
-    private double x, y, h, vx, vy;
-    private double dist, bearing, headingErr, lockRadius;
-    private boolean isLocked, prevA;
+    private Alliance alliance = Alliance.NONE;
+    private boolean localized, locked;
+    private boolean prevLb, prevDpadLeft, prevDpadRight;
+    private String locCorner = "none";
+    private double fieldForwardH = 0;
+
+    private double x, y, h;
+    private double goalX, goalY, dist, targetH;
 
     @Override
     public void init() {
@@ -88,14 +81,17 @@ public class HeadingLockSimple extends OpMode {
 
         pinpoint.resetPosAndIMU();
         headingPid.setContinuousInput(-180, 180).setDerivativeFilter(0.3);
+    }
 
-        panels.addData("status: ", "initialized");
-        panels.update(telemetry);
+    @Override
+    public void init_loop() {
+        pinpoint.update();
+        localize();
+        telem();
     }
 
     @Override
     public void start() {
-        resetPose();
         loopTimer.reset();
         headingPid.reset();
     }
@@ -107,51 +103,84 @@ public class HeadingLockSimple extends OpMode {
         double dt = Math.min(Math.max(loopTimer.seconds(), 0.0), 0.12);
         loopTimer.reset();
 
-        if (gamepad1.dpad_left) resetPose();
+        pinpoint.update();
+        localize();
         updatePose();
 
-        if (gamepad1.a && !prevA) toggleLock();
-        prevA = gamepad1.a;
+        boolean lb = gamepad1.left_bumper;
+        if (lb && !prevLb && localized) {
+            locked = !locked;
+            headingPid.reset();
+        }
+        prevLb = lb;
 
         drive(dt);
-
-        panels.addData("locked", isLocked);
-        panels.addData("pose", String.format("%.1f, %.1f, %.1f", x, y, h));
-        panels.addData("target", String.format("%.1f, %.1f", targetX, targetY));
-        panels.addData("dist", dist);
-        panels.addData("lock radius", lockRadius);
-        panels.addData("bearing", bearing);
-        panels.addData("heading err", headingErr);
-        panels.addData("loop ms", dt * 1000);
-        panels.update(telemetry);
+        telem();
     }
 
-    private void resetPose() {
-        pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, startX, startY, AngleUnit.DEGREES, startH));
+    private void localize() {
+        if (gamepad2.x) selectAlliance(Alliance.BLUE);
+        else if (gamepad2.b) selectAlliance(Alliance.RED);
+
+        boolean left = gamepad2.dpad_left, right = gamepad2.dpad_right;
+        if (alliance != Alliance.NONE) {
+            if (left && !prevDpadLeft) localizeRelative(true);
+            else if (right && !prevDpadRight) localizeRelative(false);
+        }
+        prevDpadLeft = left;
+        prevDpadRight = right;
+    }
+
+    private void selectAlliance(Alliance a) {
+        if (alliance == a) return;
+        alliance = a;
+        fieldForwardH = a == Alliance.BLUE ? TeleOpConfig.BLUE_FORWARD_H : TeleOpConfig.RED_FORWARD_H;
+        localized = false;
+        locked = false;
+        locCorner = "none";
+    }
+
+    /** blue: rel left = global top, red: rel left = global bottom */
+    private void localizeRelative(boolean relLeft) {
+        boolean blue = alliance == Alliance.BLUE;
+        boolean globalTop = blue == relLeft;
+        double px = blue ? TeleOpConfig.BLUE_LOC_X : TeleOpConfig.RED_LOC_X;
+        double py, ph;
+        if (blue) {
+            py = globalTop ? TeleOpConfig.BLUE_TOP_Y : TeleOpConfig.BLUE_BOTTOM_Y;
+            ph = globalTop ? TeleOpConfig.BLUE_TOP_H : TeleOpConfig.BLUE_BOTTOM_H;
+        } else {
+            py = globalTop ? TeleOpConfig.RED_TOP_Y : TeleOpConfig.RED_BOTTOM_Y;
+            ph = globalTop ? TeleOpConfig.RED_TOP_H : TeleOpConfig.RED_BOTTOM_H;
+        }
+        pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, px, py, AngleUnit.DEGREES, ph));
+        pinpoint.update();
+        localized = true;
+        headingPid.reset();
+        locCorner = "rel " + (relLeft ? "LEFT" : "RIGHT") + " (global " + (globalTop ? "TOP" : "BOTTOM") + ")";
     }
 
     private void updatePose() {
-        pinpoint.update();
         x = pinpoint.getPosX(DistanceUnit.INCH);
         y = pinpoint.getPosY(DistanceUnit.INCH);
         h = pinpoint.getHeading(AngleUnit.DEGREES);
-        vx = pinpoint.getVelX(DistanceUnit.INCH);
-        vy = pinpoint.getVelY(DistanceUnit.INCH);
 
-        double dx = targetX - x, dy = targetY - y;
+        boolean top = y > TeleOpConfig.FIELD_SIZE / 2;
+        if (alliance == Alliance.BLUE) {
+            goalX = top ? TeleOpConfig.BLUE_TOP_GOAL_X : TeleOpConfig.BLUE_BOTTOM_GOAL_X;
+            goalY = top ? TeleOpConfig.BLUE_TOP_GOAL_Y : TeleOpConfig.BLUE_BOTTOM_GOAL_Y;
+        } else {
+            goalX = TeleOpConfig.RED_GOAL_X;
+            goalY = top ? TeleOpConfig.RED_TOP_GOAL_Y : TeleOpConfig.RED_BOTTOM_GOAL_Y;
+        }
+
+        double dx = goalX - x, dy = goalY - y;
         dist = Math.hypot(dx, dy);
-        bearing = wrap(Math.toDegrees(Math.atan2(dy, dx)) + faceOffset);
-        headingErr = wrap(bearing - h);
-    }
-
-    private void toggleLock() {
-        isLocked = !isLocked;
-        lockRadius = dist;
-        headingPid.reset();
+        targetH = wrap(Math.toDegrees(Math.atan2(dy, dx)) + 180); // back faces goal
     }
 
     private void drive(double dt) {
-        // stick conventions: leftY + = forward, leftX + = strafe right, rightX + = turn right
+        // leftY + = forward, leftX + = strafe right, rightX + = turn right
         double leftX = deadband(gamepad1.left_stick_x);
         double leftY = -deadband(gamepad1.left_stick_y);
         double rightX = deadband(gamepad1.right_stick_x) * 0.9;
@@ -166,62 +195,44 @@ public class HeadingLockSimple extends OpMode {
         sy = driveLimiter.getY();
 
         rotLimiter.setRates(TeleOpConfig.TURN_ACCEL_UP, TeleOpConfig.TURN_ACCEL_DOWN);
-        double manualRot = 0.8 * rotLimiter.calculate(gamepad1.right_stick_button
+        double rot = 0.8 * rotLimiter.calculate(locked ? 0 : gamepad1.right_stick_button
                 ? TeleOpConfig.AIM_TURN_SCALE * rightX
                 : curve(rightX), dt);
 
-        double fwd, right, rot;
-        if (isLocked && dist > minDist) {
-            // radial (toward target) + tangential (robot's right when facing target), field frame
-            double ux = (targetX - x) / dist, uy = (targetY - y) / dist;
-            double tx = uy, ty = -ux;
+        if (locked) {
+            if (dist > minDist) {
+                headingPid.setPID(hP, 0, hD).setOutputRange(-hMaxPower, hMaxPower);
+                rot = -Conversions.clamp(headingPid.calculate(h, targetH, dt), -hMaxPower, hMaxPower); // pid ccw, +rot cw
+            } else rot = 0;
+        }
 
-            double radial = sy;
-            if (Math.abs(sy) > 1e-3) lockRadius = dist;
-            else radial = Conversions.clamp(radiusP * (dist - lockRadius), -radiusMaxPower, radiusMaxPower);
-
-            double fx = radial * ux + sx * tx;
-            double fy = radial * uy + sx * ty;
-
-            // field -> robot frame
-            double hr = Math.toRadians(h);
-            fwd = fx * Math.cos(hr) + fy * Math.sin(hr);
-            right = fx * Math.sin(hr) - fy * Math.cos(hr);
-
-            if (Math.abs(rightX) > 0) {
-                headingPid.reset();
-                rot = manualRot;
-            } else {
-                // bearing rate ff, +rot = clockwise, heading is ccw
-                double omega = Math.toDegrees(((targetY - y) * vx - (targetX - x) * vy) / (dist * dist));
-                headingPid.setPID(hP, hI, hD).setOutputRange(-hMaxPower, hMaxPower);
-
-                double ccw = headingPid.calculate(h, bearing, dt) + hFF * omega;
-                rot = -Conversions.clamp(ccw, -hMaxPower, hMaxPower);
-            }
-        } else {
-            fwd = sy;
-            right = sx;
-            rot = manualRot;
-            if (TeleOpConfig.useFieldCentricDrive) {
-                double rel = Math.toRadians(h - startH);
-                double cos = Math.cos(rel), sin = Math.sin(rel);
-                right = sx * cos + sy * sin;
-                fwd = sy * cos - sx * sin;
-            }
+        double fwd = sy, right = sx;
+        if (TeleOpConfig.useFieldCentricDrive) {
+            double rel = Math.toRadians(h - fieldForwardH);
+            double cos = Math.cos(rel), sin = Math.sin(rel);
+            right = sx * cos + sy * sin;
+            fwd = sy * cos - sx * sin;
         }
 
         // +fwd forward, +right right, +rot clockwise
         double denominator = Math.max(Math.abs(fwd) + Math.abs(right) + Math.abs(rot), 1.0);
-        double fl = (fwd + right + rot) / denominator;
-        double bl = (fwd - right + rot) / denominator;
-        double fr = (fwd - right - rot) / denominator;
-        double br = (fwd + right - rot) / denominator;
+        leftFront.setPower((fwd + right + rot) / denominator);
+        leftBack.setPower((fwd - right + rot) / denominator);
+        rightFront.setPower((fwd - right - rot) / denominator);
+        rightBack.setPower((fwd + right - rot) / denominator);
+    }
 
-        leftFront.setPower(fl);
-        leftBack.setPower(bl);
-        rightFront.setPower(fr);
-        rightBack.setPower(br);
+    private void telem() {
+        panels.addData("alliance", alliance == Alliance.NONE ? "NONE - gp2 X = blue, B = red" : alliance);
+        panels.addData("localized", localized ? locCorner
+                : alliance == Alliance.NONE ? "NO - pick alliance first" : "NO - gp2 dpad left/right");
+        panels.addData("locked", locked);
+        panels.addData("pose", String.format("%.1f, %.1f, %.1f", x, y, h));
+        panels.addData("goal", String.format("%.1f, %.1f", goalX, goalY));
+        panels.addData("dist", dist);
+        panels.addData("target h", targetH);
+        panels.addData("heading err", wrap(targetH - h));
+        panels.update(telemetry);
     }
 
     static double wrap(double deg) {

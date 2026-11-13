@@ -23,16 +23,21 @@ public class TeleOpConfig {
     public static double FIELD_SIZE = 142; // shud be 144 but 142 realistic
 
     // localization poses (driver-relative rx)
-    public static double BLUE_LOC_X = 8,   BLUE_TOP_Y = 132, BLUE_TOP_H = 0,   BLUE_BOTTOM_Y = 8, BLUE_BOTTOM_H = 180;
-    public static double RED_LOC_X  = 132, RED_TOP_Y  = 132, RED_TOP_H  = 180, RED_BOTTOM_Y  = 8, RED_BOTTOM_H  = 0;
+    // intake faces inward, toward the goals when localizing
+    public static double BLUE_LOC_X = 8,   BLUE_TOP_Y = 132, BLUE_TOP_H = -90, BLUE_BOTTOM_Y = 8, BLUE_BOTTOM_H = 90;
+    public static double RED_LOC_X  = 132, RED_TOP_Y  = 132, RED_TOP_H  = -90, RED_BOTTOM_Y  = 8, RED_BOTTOM_H  = 90;
+
+    // goals (global), alliances shoot onto far side tipper
+    public static double RED_GOAL_X  = 58, RED_TOP_GOAL_Y  = 83, RED_BOTTOM_GOAL_Y  = 55;
+    public static double BLUE_TOP_GOAL_X = 83, BLUE_TOP_GOAL_Y = 81, BLUE_BOTTOM_GOAL_X = 84, BLUE_BOTTOM_GOAL_Y = 55;
 
     // driver's forward
     public static double BLUE_FORWARD_H = 0, RED_FORWARD_H = 180;
 
-    // snap headings (on alliance, global)
-    // TODO tune: these are placeholders, set to the heading that faces the goal from each shooting half
-    public static double BLUE_TOP_SNAP_H = 90,  BLUE_BOTTOM_SNAP_H = -90;
-    public static double RED_TOP_SNAP_H = 90, RED_BOTTOM_SNAP_H = -90;
+    // goal lock heading pd (deg in, power out)
+    public static double LOCK_P = 0.025, LOCK_D = 0.0015;
+    public static double LOCK_MAX_POWER = 0.8;
+    public static double LOCK_MIN_DIST = 6; // in, no aim inside this
 
     /// slew vals
     public static double ACCEL_UP = 4;
