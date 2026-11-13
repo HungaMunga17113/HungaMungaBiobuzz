@@ -31,8 +31,8 @@ public class TeleOpConfig {
 
     // snap headings (on alliance, global)
     // TODO tune: these are placeholders, set to the heading that faces the goal from each shooting half
-    public static double BLUE_TOP_SNAP_H = -90,  BLUE_BOTTOM_SNAP_H = 90;
-    public static double RED_TOP_SNAP_H = -90, RED_BOTTOM_SNAP_H = 90;
+    public static double BLUE_TOP_SNAP_H = 90,  BLUE_BOTTOM_SNAP_H = -90;
+    public static double RED_TOP_SNAP_H = 90, RED_BOTTOM_SNAP_H = -90;
 
     /// slew vals
     public static double ACCEL_UP = 4;
@@ -42,16 +42,16 @@ public class TeleOpConfig {
 
     /// shooter stuff
 
-    public static int rpm_1 = -5200;
+    public static int rpm_1 = -6000;
     public static int rpm_2 = 0;
     public static enum TuningModes { BUILT_IN, CUSTOM, SVA};
     public static TuningModes TuningMode = TuningModes.BUILT_IN;
 
     // builtin pid+f
-    public static double bkP = 7.3;
-    public static double bkI = 4;
-    public static double bkD = 20;
-    public static double bkF = 10.2;
+    public static double bkP = 0.42;
+    public static double bkI = 1;
+    public static double bkD = 0.282;
+    public static double bkF = 12.3;
 
     // custom pid+f
     public static double ckP = 60;

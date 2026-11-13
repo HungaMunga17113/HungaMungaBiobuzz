@@ -35,8 +35,8 @@ import java.util.List;
 @TeleOp(name = "loclock test", group = "Main")
 public class HeadingLock extends OpMode {
     /// field (pedro coords, in / deg)
-    public static double startX = 56, startY = 8, startH = 90;
-    public static double targetX = 132, targetY = 136;
+    public static double startX = 132, startY = 8, startH = 90;
+    public static double targetX = 8, targetY = 8;
     public static double faceOffset = 0; // deg, eg 180 to face away
 
     /// lock

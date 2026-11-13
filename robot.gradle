@@ -243,6 +243,16 @@ robotTask('rcMirror', 'mirror the rc screen with scrcpy') { RobotTask t ->
     t.logger.lifecycle('mirroring rc')
 }
 
+// sloth 0.3.2 crashes on boot ("fatal class locating error") if any OnBot Java class is built on the rc,
+// it passes jar entry names like org/firstinspires/ftc/teamcode/Foo to Class.forName. moves them aside instead of deleting.
+robotTask('clearOnBotJava', 'move OnBot Java sources/builds off to /sdcard/FIRST/java.bak (fixes the sloth class locating crash)') { RobotTask t ->
+    t.connect()
+    t.logger.lifecycle(t.adbDevice(['shell', "find ${RobotTask.REMOTE_DIR}/java -type f 2>/dev/null; true"]) ?: 'no OnBot Java files')
+    t.adbDevice(['shell', "rm -rf ${RobotTask.REMOTE_DIR}/java.bak; [ -d ${RobotTask.REMOTE_DIR}/java ] && mv ${RobotTask.REMOTE_DIR}/java ${RobotTask.REMOTE_DIR}/java.bak; true"])
+    t.logger.lifecycle("moved ${RobotTask.REMOTE_DIR}/java to ${RobotTask.REMOTE_DIR}/java.bak")
+    t.restartApp()
+}
+
 robotTask('pushConfig', 'push robot-config/*.xml to the robot controller and restart the rc app') { RobotTask t ->
     def files = (t.configDir.listFiles({ it.name.endsWith('.xml') } as FileFilter) ?: []).sort { it.name }
     if (!files) throw new GradleException("no .xml files in ${t.configDir}")

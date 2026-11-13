@@ -295,6 +295,7 @@ public class Main extends OpMode {
 //        }
 //        else if (gamepad1.b) { transfer.setPosition(1.0); }
         if(gamepad1.right_trigger > 0.15){
+            //old: 0.65 & 1.0
             transfer.setPosition(0.65);
         }else{
             transfer.setPosition(1.0);

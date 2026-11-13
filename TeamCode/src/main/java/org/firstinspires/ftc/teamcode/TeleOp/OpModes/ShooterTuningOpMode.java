@@ -20,6 +20,7 @@ import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
@@ -31,19 +32,20 @@ import org.firstinspires.ftc.teamcode.util.control.PIDFControllerEx;
 @Configurable
 @TeleOp(name="shooter TUNER", group="misc")
 public class ShooterTuningOpMode extends OpMode {
-    public static int targetRPM = 0; // max k
+    public static int targetRPM = -5700; // max k
 
     private DcMotorEx shooter;
+    private DcMotorEx intake;
     private final double tpr = Conversions.TPR_6000_RPM;
 
-    private static double targetVel = 0;
+    private double targetVel = 0;
     private double currentVel = 0;
     private double currentRPM = 0;
     private double error = 0;
     private double output = 0;
 
-    private double p,i,d,f;
-    private double s,v,a;
+    private static double p,i,d,f;
+    private static double s,v,a;
     private final PIDFControllerEx pidf = new PIDFControllerEx(0,0,0,0);
     private TelemetryManager panels;
     private TeleOpConfig.TuningModes mode = TeleOpConfig.TuningModes.BUILT_IN;
@@ -58,6 +60,9 @@ public class ShooterTuningOpMode extends OpMode {
         shooter = hardwareMap.get(DcMotorEx.class, "flywheel");
         shooter.setDirection(DcMotorSimple.Direction.FORWARD);
         shooter.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
+
+        intake = hardwareMap.get(DcMotorEx.class, "intake");
+        intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         shooter.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         apply_mode();
@@ -93,6 +98,8 @@ public class ShooterTuningOpMode extends OpMode {
             shooter_custom();
         }
 
+        intake.setPower(1);
+
         panels.addData("mode", mode);
         panels.addData("targetVel ticks", targetVel);
         panels.addData("currentVel ticks", currentVel);
@@ -109,6 +116,10 @@ public class ShooterTuningOpMode extends OpMode {
     }
 
     private void shooter_builtin() {
+        p = bkP;
+        i = bkI;
+        d = bkD;
+        f = bkF;
         shooter.setVelocityPIDFCoefficients(p, i, d, f);
         shooter.setVelocity(targetVel);
         output = shooter.getPower();
