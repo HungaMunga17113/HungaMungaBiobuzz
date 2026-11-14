@@ -288,9 +288,9 @@ public class Main extends OpMode {
     }
 
     private void intake() {
-        intake.setPower( (gamepad1.left_trigger>0.2) ? 0.8 :  (gamepad1.dpad_down) ? -0.6 : 0);
+        intake.setPower((gamepad1.left_trigger>0.2) ? 0.8 :  (gamepad1.dpad_down) ? -0.6 : 0);
         if (transferActive) {
-            intake.setPower((intake.getPower() > 0.2) ? intake.getPower() - 0.2 : intake.getPower());
+            intake.setPower((gamepad1.left_trigger>0.2) ? 0.5 :  (gamepad1.dpad_down) ? -0.6 : 0);
         }
     }
     private void shooter() {
