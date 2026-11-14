@@ -38,6 +38,7 @@ public class Main extends OpMode {
     private enum Alliance { NONE, BLUE, RED }
 
     private boolean locked, prevLockBtn, prevDpadLeft, prevDpadRight;
+    private boolean transferActive;
     private Alliance alliance = Alliance.NONE;
     private boolean localized;
     private String locCorner = "none"; // e.g. "rel LEFT (global TOP)"
@@ -88,15 +89,6 @@ public class Main extends OpMode {
         rightFront.setDirection(DcMotorEx.Direction.REVERSE);
 
         telemetry.addData("status: ", "initializing");
-    }
-
-    @Override
-    public void init_loop() {
-        // allow localizing while waiting for start
-        pinpoint.update();
-        localize();
-        localizationTelemetry();
-        telemetry.update();
     }
 
     @Override
@@ -186,6 +178,9 @@ public class Main extends OpMode {
         loopDt = Math.min(Math.max(rawDt, 0.0), 0.12);
 
         drive(loopDt);
+        localize();
+        localizationTelemetry();
+
         intake();
         shooter();
         transfer();
@@ -231,6 +226,7 @@ public class Main extends OpMode {
             locked = !locked;
             lockPid.reset();
         }
+        if (gamepad1.dpad_left) { pinpoint.setHeading(0, AngleUnit.DEGREES); }
         prevLockBtn = lockBtn;
 
         double[] g = goal(globalTop);
@@ -291,7 +287,12 @@ public class Main extends OpMode {
         return (input - Math.signum(input) * TeleOpConfig.STICK_DB) / (1 - TeleOpConfig.STICK_DB);
     }
 
-    private void intake() { intake.setPower( (gamepad1.left_trigger>0.2) ? 1 :  (gamepad1.dpad_down) ? -1 : 0); }
+    private void intake() {
+        intake.setPower( (gamepad1.left_trigger>0.2) ? 0.8 :  (gamepad1.dpad_down) ? -0.6 : 0);
+        if (transferActive) {
+            intake.setPower((intake.getPower() > 0.2) ? intake.getPower() - 0.2 : intake.getPower());
+        }
+    }
     private void shooter() {
         shooter.setVelocityPIDFCoefficients(TeleOpConfig.bkP, TeleOpConfig.bkI, TeleOpConfig.bkD, TeleOpConfig.bkF);
         if (gamepad1.right_trigger > 0.15) { tVel = (int) Conversions.rpmToTps(TeleOpConfig.rpm_1, Conversions.TPR_6000_RPM); }
@@ -300,7 +301,7 @@ public class Main extends OpMode {
 
         telemetry.addData("speed", Conversions.tpsToRpm(shooter.getVelocity(), Conversions.TPR_6000_RPM));
         telemetry.addData("target speed - rpm1", TeleOpConfig.rpm_1);
-       // telemetry.addData("input speed", tVel);
+        //telemetry.addData("input speed", tVel);
         //shooter.setPower( (gamepad1.right_trigger>0.2) ? -1 :  0);
 
     }
@@ -311,9 +312,11 @@ public class Main extends OpMode {
 //        else if (gamepad1.b) { transfer.setPosition(1.0); }
         if(gamepad1.right_trigger > 0.15){
             //old: 0.65 & 1.0
-            transfer.setPosition(0.65);
-        }else{
             transfer.setPosition(1.0);
+            transferActive = true;
+        }else{
+            transfer.setPosition(0.65);
+            transferActive = false;
         }
     }
 }
