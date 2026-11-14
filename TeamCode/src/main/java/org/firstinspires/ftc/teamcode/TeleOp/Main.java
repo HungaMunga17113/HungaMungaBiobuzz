@@ -4,7 +4,6 @@ import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -43,6 +42,10 @@ public class Main extends OpMode {
     private boolean localized;
     private String locCorner = "none"; // e.g. "rel LEFT (global TOP)"
     private double fieldForwardH = 0;  // GLOBAL heading que es "forward" for owen/arnav -- facing the other box+
+    private final boolean vComp = TeleOpConfig.voltageCompensateShooter;
+    private final double nomVoltage = TeleOpConfig.nominalVoltage;
+    private double currVoltage;
+    private double compVoltage; // compensated voltage
 
     @Override
     public void init() {
@@ -149,7 +152,7 @@ public class Main extends OpMode {
         return pinpoint.getPosY(DistanceUnit.INCH) > TeleOpConfig.FIELD_SIZE / 2;
     }
 
-    /** owen; blue sees global top as their left, red sees global top as their right */
+    /** blue sees global top as their left, red sees global top as their right (from driver box) */
     private boolean inRelativeLeft(boolean globalTop) {
         return (alliance == Alliance.BLUE) == globalTop;
     }
@@ -179,7 +182,6 @@ public class Main extends OpMode {
 
         drive(loopDt);
         localize();
-        localizationTelemetry();
 
         intake();
         shooter();
@@ -290,26 +292,29 @@ public class Main extends OpMode {
     private void intake() {
         intake.setPower((gamepad1.left_trigger>0.2) ? 0.8 :  (gamepad1.dpad_down) ? -0.6 : 0);
         if (transferActive) {
-            intake.setPower((gamepad1.left_trigger>0.2) ? 0.5 :  (gamepad1.dpad_down) ? -0.6 : 0);
+            intake.setPower((gamepad1.left_trigger>0.2) ? 0.65 :  (gamepad1.dpad_down) ? -0.6 : 0);
         }
     }
     private void shooter() {
-        shooter.setVelocityPIDFCoefficients(TeleOpConfig.bkP, TeleOpConfig.bkI, TeleOpConfig.bkD, TeleOpConfig.bkF);
+
+        // voltage compensation
+        currVoltage = hardwareMap.voltageSensor.iterator().next().getVoltage();
+
+        if (vComp && (currVoltage > 9.0)) { compVoltage = TeleOpConfig.bkF * (nomVoltage/currVoltage); }
+        else { compVoltage = TeleOpConfig.bkF; }
+
+        shooter.setVelocityPIDFCoefficients(TeleOpConfig.bkP, TeleOpConfig.bkI, TeleOpConfig.bkD, compVoltage);
+
         if (gamepad1.right_trigger > 0.15) { tVel = (int) Conversions.rpmToTps(TeleOpConfig.rpm_1, Conversions.TPR_6000_RPM); }
         else if (gamepad1.right_bumper) { tVel = (int) Conversions.rpmToTps(TeleOpConfig.rpm_2, Conversions.TPR_6000_RPM); }
         shooter.setVelocity(tVel);
 
         telemetry.addData("speed", Conversions.tpsToRpm(shooter.getVelocity(), Conversions.TPR_6000_RPM));
-        telemetry.addData("target speed - rpm1", TeleOpConfig.rpm_1);
-        //telemetry.addData("input speed", tVel);
+        telemetry.addData("target speed", tVel);
         //shooter.setPower( (gamepad1.right_trigger>0.2) ? -1 :  0);
 
     }
     private void transfer() {
-//        if (gamepad1.a) {
-//            transfer.setPosition(0.65);
-//        }
-//        else if (gamepad1.b) { transfer.setPosition(1.0); }
         if(gamepad1.right_trigger > 0.15){
             //old: 0.65 & 1.0
             transfer.setPosition(1.0);

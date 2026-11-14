@@ -47,10 +47,12 @@ public class TeleOpConfig {
 
     /// shooter stuff
 
-    public static int rpm_1 = -5700;
+    public static int rpm_1 = -6000;
     public static int rpm_2 = 0;
     public static enum TuningModes { BUILT_IN, CUSTOM, SVA};
     public static TuningModes TuningMode = TuningModes.BUILT_IN;
+    public static boolean voltageCompensateShooter = false;
+    public static double nominalVoltage = 12.4;
 
     // builtin pid+f
     public static double bkP = 1.4;
