@@ -47,16 +47,16 @@ public class TeleOpConfig {
 
     /// shooter stuff
 
-    public static int rpm_1 = -6000;
+    public static int rpm_1 = -5700;
     public static int rpm_2 = 0;
     public static enum TuningModes { BUILT_IN, CUSTOM, SVA};
     public static TuningModes TuningMode = TuningModes.BUILT_IN;
 
     // builtin pid+f
-    public static double bkP = 0.42;
-    public static double bkI = 1;
-    public static double bkD = 0.282;
-    public static double bkF = 12.3;
+    public static double bkP = 1.4;
+    public static double bkI = 0.24;
+    public static double bkD = 1.83;
+    public static double bkF = 12.65;
 
     // custom pid+f
     public static double ckP = 60;

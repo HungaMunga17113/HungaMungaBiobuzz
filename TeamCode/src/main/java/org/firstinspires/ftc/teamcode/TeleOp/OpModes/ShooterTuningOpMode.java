@@ -32,7 +32,7 @@ import org.firstinspires.ftc.teamcode.util.control.PIDFControllerEx;
 @Configurable
 @TeleOp(name="shooter TUNER", group="misc")
 public class ShooterTuningOpMode extends OpMode {
-    public static int targetRPM = -5700; // max k
+    public static int targetRPM = -4050; // max k
 
     private DcMotorEx shooter;
     private DcMotorEx intake;
@@ -90,7 +90,7 @@ public class ShooterTuningOpMode extends OpMode {
         targetVel = Conversions.rpmToTps(targetRPM, tpr);
         currentVel = Math.abs(shooter.getVelocity());
         currentRPM = Conversions.tpsToRpm(currentVel, tpr);
-        error = targetRPM - currentRPM;
+        error = -1*targetRPM - currentRPM;
 
         if (mode == TeleOpConfig.TuningModes.BUILT_IN) {
             shooter_builtin();
